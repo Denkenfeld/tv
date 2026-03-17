@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>HAUSEN STREAM</title>
+<title>HAUSEN AM STREAM</title>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.13/dist/hls.min.js"></script>
 <style>
 * { box-sizing:border-box; margin:0; padding:0; }
 
 html, body {
-  height:100%;
+  width:100%; height:100%;
   background:#0d1018;
   color:#eee8d8;
   font-family: Georgia, serif;
@@ -24,7 +24,7 @@ body {
   flex-direction:column;
 }
 
-/* HEADER */
+/* ── HEADER ── */
 #hdr {
   flex-shrink:0;
   background:#161b28;
@@ -39,7 +39,7 @@ body {
   letter-spacing:.04em;
 }
 
-/* PLAYER — 42% of remaining height */
+/* ── PLAYER ── */
 #pwrap {
   flex:0 0 42%;
   position:relative;
@@ -47,15 +47,13 @@ body {
   overflow:hidden;
 }
 #vid {
-  width:100%;
-  height:100%;
+  width:100%; height:100%;
   display:block;
   object-fit:contain;
   background:#000;
-  /* no controls */
 }
 
-/* SPINNER */
+/* ── SPINNER ── */
 #spin {
   position:absolute; inset:0;
   display:flex; align-items:center; justify-content:center;
@@ -73,12 +71,24 @@ body {
 }
 @keyframes sp { to { transform:rotate(360deg); } }
 
+/* ── PLAY OVERLAY (only on first load) ── */
+#playoverlay {
+  position:absolute; inset:0;
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(0,0,0,.5);
+  cursor:pointer;
+  z-index:10;
+}
+#playoverlay svg {
+  width:80px; height:80px;
+  filter:drop-shadow(0 2px 12px rgba(0,0,0,.6));
+}
+#playoverlay.hidden { display:none; }
 
-
-/* subtitles off */
+/* ── subtitles off ── */
 video::cue { display:none; }
 
-/* 3x3 GRID */
+/* ── 3x3 GRID ── */
 #grid {
   flex:1;
   display:grid;
@@ -118,9 +128,12 @@ video::cue { display:none; }
 .cb.active span { color:#0d1018; }
 .cb:active { transform:scale(.93); }
 
-/* LANDSCAPE — CSS hides UI (fallback if webkit fullscreen not available) */
+/* ── LANDSCAPE: pure CSS fullscreen, no JS fullscreen API ──
+   In a saved WebApp there is no browser chrome, so this
+   IS true fullscreen. Video keeps playing uninterrupted.   */
 @media (orientation:landscape) {
-  #hdr, #now, #grid { display:none !important; }
+  #hdr, #grid { display:none !important; }
+  body { background:#000; }
   #pwrap {
     position:fixed !important;
     inset:0 !important;
@@ -129,6 +142,7 @@ video::cue { display:none; }
     height:100vh !important;
     z-index:999;
   }
+  #vid { object-fit:contain; }
 }
 </style>
 </head>
@@ -138,18 +152,27 @@ video::cue { display:none; }
 
 <div id="pwrap">
   <video id="vid" playsinline muted></video>
-  <div id="spin" class="on"><div class="ring"></div></div>
-
+  <div id="spin"><div class="ring"></div></div>
+  <div id="playoverlay">
+    <!-- big play triangle -->
+    <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="50" cy="50" r="50" fill="rgba(240,165,0,0.85)"/>
+      <polygon points="38,28 38,72 74,50" fill="#0d1018"/>
+    </svg>
+  </div>
 </div>
 
 <div id="grid"></div>
 
 <script>
-var video     = document.getElementById('vid');
-var spinEl    = document.getElementById('spin');
-var gridEl    = document.getElementById('grid');
+var video   = document.getElementById('vid');
+var spinEl  = document.getElementById('spin');
+var overlay = document.getElementById('playoverlay');
+var gridEl  = document.getElementById('grid');
+
 var hlsPlayer = null;
 var curIdx    = -1;
+var started   = false;   /* has user pressed play at least once */
 
 var channels = [
   { name:"ARD",     url:"https://daserste-live.ard-mcdn.de/daserste/live/hls/de/master.m3u8" },
@@ -163,10 +186,37 @@ var channels = [
   { name:"3sat",    url:"https://zdf-hls-18.akamaized.net/hls/live/2016501/dach/high/master.m3u8" }
 ];
 
-/* ── Play a channel (logic from reference code) ── */
-function playChannel(url, name, idx) {
+/* ── Load stream into HLS (muted, no play yet) ── */
+function loadStream(url) {
   spinEl.classList.add('on');
+  if (hlsPlayer) { hlsPlayer.destroy(); hlsPlayer = null; }
 
+  if (window.Hls && Hls.isSupported()) {
+    hlsPlayer = new Hls({ lowLatencyMode:true, maxBufferLength:30, backBufferLength:30 });
+    hlsPlayer.loadSource(url);
+    hlsPlayer.attachMedia(video);
+    hlsPlayer.on(Hls.Events.MANIFEST_PARSED, function() {
+      hlsPlayer.subtitleTrack = -1;
+      if (started) {
+        video.muted = false;
+        video.play().catch(function(){});
+      }
+      /* if not started yet: stream is buffered, waiting for user tap */
+    });
+    hlsPlayer.on(Hls.Events.ERROR, function(ev, d) {
+      if (d.fatal) spinEl.classList.remove('on');
+    });
+  } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+    video.src = url;
+    if (started) {
+      video.muted = false;
+      video.play().catch(function(){});
+    }
+  }
+}
+
+/* ── Switch active button highlight ── */
+function setActive(idx) {
   if (curIdx >= 0) {
     var old = document.getElementById('b' + curIdx);
     if (old) old.classList.remove('active');
@@ -174,29 +224,22 @@ function playChannel(url, name, idx) {
   curIdx = idx;
   var btn = document.getElementById('b' + idx);
   if (btn) btn.classList.add('active');
-
-  if (hlsPlayer) { hlsPlayer.destroy(); hlsPlayer = null; }
-
-  if (Hls.isSupported()) {
-    hlsPlayer = new Hls({ lowLatencyMode:true, maxBufferLength:30, backBufferLength:30 });
-    hlsPlayer.loadSource(url);
-    hlsPlayer.attachMedia(video);
-    hlsPlayer.on(Hls.Events.MANIFEST_PARSED, function() {
-      hlsPlayer.subtitleTrack = -1;
-      video.play().catch(function() {});
-    });
-    hlsPlayer.on(Hls.Events.ERROR, function(ev, d) {
-      if (d.fatal) spinEl.classList.remove('on');
-    });
-  } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-    // iOS Safari native HLS
-    video.src = url;
-    video.play().catch(function() {});
-  }
 }
 
-video.addEventListener('playing', function() { spinEl.classList.remove('on'); });
-video.addEventListener('waiting', function() { spinEl.classList.add('on'); });
+/* ── First user interaction: unmute + play + hide overlay ── */
+function firstStart() {
+  started = true;
+  overlay.classList.add('hidden');
+  video.muted = false;
+  video.play().catch(function(){});
+}
+
+/* ── Tap on play overlay ── */
+overlay.addEventListener('touchstart', function(e) {
+  e.preventDefault();
+  firstStart();
+}, { passive:false });
+overlay.addEventListener('click', firstStart);
 
 /* ── Build grid ── */
 for (var i = 0; i < channels.length; i++) {
@@ -210,83 +253,38 @@ for (var i = 0; i < channels.length; i++) {
 
     function press(e) {
       if (e.cancelable) e.preventDefault();
+      if (!started) {
+        /* first tap on any button also starts playback */
+        setActive(idx);
+        loadStream(channels[idx].url);
+        firstStart();
+        return;
+      }
       if (idx === curIdx) {
+        /* same channel: toggle pause */
         video.paused ? video.play() : video.pause();
       } else {
-        playChannel(channels[idx].url, channels[idx].name, idx);
+        setActive(idx);
+        loadStream(channels[idx].url);
       }
     }
+
     btn.addEventListener('touchstart', press, { passive:false });
     btn.addEventListener('click', press);
     gridEl.appendChild(btn);
   })(i);
 }
 
-/* ── Orientation: webkit fullscreen on landscape ── */
-window.addEventListener('orientationchange', function() {
-  setTimeout(function() {
-    var isLandscape = window.innerWidth > window.innerHeight;
-    if (isLandscape) {
-      if (video.webkitEnterFullscreen) {
-        video.webkitEnterFullscreen();
-      } else if (video.requestFullscreen) {
-        video.requestFullscreen();
-      }
-    } else {
-      exitFS();
-    }
-  }, 200);
-});
+video.addEventListener('playing', function() { spinEl.classList.remove('on'); });
+video.addEventListener('waiting', function() { spinEl.classList.add('on'); });
 
-/* also catch the case where user exits fullscreen manually */
-document.addEventListener('webkitfullscreenchange', function() {
-  if (!document.webkitFullscreenElement && !video.webkitDisplayingFullscreen) {
-    restorePortrait();
-  }
-});
-document.addEventListener('fullscreenchange', function() {
-  if (!document.fullscreenElement) {
-    restorePortrait();
-  }
-});
-video.addEventListener('webkitendfullscreen', function() {
-  restorePortrait();
-  /* iOS pauses after exiting fullscreen – resume automatically */
-  setTimeout(function() { video.play().catch(function(){}); }, 150);
-});
-
-function exitFS() {
-  if (video.webkitExitFullscreen) {
-    video.webkitExitFullscreen();
-  } else if (document.webkitExitFullscreen) {
-    document.webkitExitFullscreen();
-  } else if (document.exitFullscreen && document.fullscreenElement) {
-    document.exitFullscreen();
-  }
-  restorePortrait();
-}
-
-function restorePortrait() {
-  document.getElementById('hdr').style.display = '';
-  document.getElementById('grid').style.display = '';
-  document.getElementById('pwrap').removeAttribute('style');
-}
-
-/* ── Autostart ARD on load ── */
+/* ── On load: pre-buffer ARD silently, show play overlay ── */
 window.onload = function() {
   setTimeout(function() {
-    playChannel(channels[0].url, channels[0].name, 0);
-  }, 400);
+    setActive(0);
+    loadStream(channels[0].url);
+  }, 300);
 };
-
-/* ── Unmute on first tap (iOS autoplay requires muted start) ── */
-var unmuted = false;
-document.addEventListener('touchstart', function() {
-  if (!unmuted) {
-    unmuted = true;
-    video.muted = false;
-  }
-}, { once: true });
 </script>
 </body>
 </html>
