@@ -1,574 +1,261 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>HAUSEN AM STREAM</title>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@900&family=Source+Serif+4:wght@600&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --bg:     #0d1018;
-      --bg2:    #161b28;
-      --bg3:    #1e2438;
-      --accent: #f0a500;
-      --acc2:   #b87b00;
-      --text:   #eee8d8;
-      --muted:  #7a7e96;
-      --red:    #e63946;
-      --border: #252d45;
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>HAUSEN AM STREAM</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:#0d1018;color:#eee8d8;font-family:Georgia,serif;overflow:hidden}
 
-    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+/* HEADER */
+#hdr{
+  background:#161b28;
+  border-bottom:3px solid #f0a500;
+  padding:11px 14px 10px;
+  display:flex;align-items:center;gap:10px;
+}
+#hdr h1{
+  font-size:clamp(1rem,5.5vw,1.5rem);
+  font-weight:bold;
+  color:#f0a500;
+  letter-spacing:.04em;
+}
+.dot{
+  width:10px;height:10px;
+  background:#e63946;border-radius:50%;flex-shrink:0;
+  animation:bl 1.4s infinite;
+}
+@keyframes bl{0%,100%{opacity:1}50%{opacity:.15}}
 
-    html { height: 100%; }
+/* PLAYER */
+#pwrap{
+  background:#000;
+  position:relative;
+  width:100%;
+}
+#vid{
+  display:block;width:100%;height:100%;
+  object-fit:contain;background:#000;
+}
 
-    body {
-      height: 100%;
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'Source Serif 4', Georgia, serif;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
+/* SPINNER */
+#spin{
+  position:absolute;inset:0;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,.6);
+  opacity:0;transition:opacity .2s;pointer-events:none;
+}
+#spin.on{opacity:1}
+.ring{
+  width:52px;height:52px;
+  border:4px solid rgba(240,165,0,.2);
+  border-top-color:#f0a500;
+  border-radius:50%;
+  animation:sp .8s linear infinite;
+}
+@keyframes sp{to{transform:rotate(360deg)}}
 
-    /* ── Header ── */
-    #header {
-      background: var(--bg2);
-      border-bottom: 3px solid var(--accent);
-      padding: 10px 14px 9px;
-      display: flex;
-      align-items: center;
-      gap: 9px;
-      flex-shrink: 0;
-      z-index: 10;
-    }
+/* ERROR */
+#err{
+  position:absolute;inset:0;
+  display:none;flex-direction:column;align-items:center;justify-content:center;
+  gap:12px;background:rgba(0,0,0,.85);
+  font-size:clamp(.9rem,4vw,1.05rem);
+  text-align:center;padding:20px;line-height:1.5;
+}
+#err.on{display:flex}
+#err .ico{font-size:2.5rem}
 
-    .live-dot {
-      width: 10px; height: 10px;
-      background: var(--red);
-      border-radius: 50%;
-      flex-shrink: 0;
-      animation: blink 1.4s infinite;
-    }
-    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.15} }
+/* NOW PLAYING */
+#now{
+  background:#161b28;
+  border-bottom:1px solid #252d45;
+  padding:7px 14px;
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  flex-shrink:0;
+}
+#nowname{
+  font-size:clamp(1.1rem,6vw,1.5rem);
+  font-weight:bold;color:#f0a500;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+#mute{
+  width:48px;height:48px;
+  background:#1e2438;border:2px solid #252d45;border-radius:11px;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-size:1.5rem;user-select:none;flex-shrink:0;
+}
+#mute:active{transform:scale(.93)}
 
-    #header h1 {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: clamp(1.05rem, 5vw, 1.5rem);
-      font-weight: 900;
-      color: var(--accent);
-      letter-spacing: .03em;
-      line-height: 1;
-    }
+/* GRID */
+#grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  grid-template-rows:repeat(3,1fr);
+  gap:6px;padding:6px;
+  flex:1;min-height:0;
+}
+.cb{
+  background:#1e2438;
+  border:2px solid #252d45;
+  border-radius:14px;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;padding:4px;
+  touch-action:manipulation;
+  user-select:none;-webkit-user-select:none;
+  transition:background .1s,transform .08s;
+}
+.cb span{
+  font-size:clamp(.7rem,3.8vw,1rem);
+  font-weight:bold;color:#eee8d8;
+  text-align:center;line-height:1.25;
+  pointer-events:none;
+}
+.cb.active{background:#f0a500;border-color:#f0a500}
+.cb.active span{color:#0d1018}
+.cb:active{transform:scale(.93)}
 
-    /* ── Player ── */
-    #playerWrap {
-      background: #000;
-      position: relative;
-      width: 100%;
-      flex-shrink: 0;
-    }
-
-    #player {
-      width: 100%;
-      height: 100%;
-      display: block;
-      object-fit: contain;
-      background: #000;
-    }
-
-    #spinnerEl {
-      position: absolute; inset:0;
-      display: flex; align-items: center; justify-content: center;
-      background: rgba(0,0,0,.6);
-      pointer-events: none;
-      opacity: 0; transition: opacity .2s;
-    }
-    #spinnerEl.vis { opacity: 1; }
-    .spinner {
-      width: 50px; height: 50px;
-      border: 4px solid rgba(240,165,0,.2);
-      border-top-color: var(--accent);
-      border-radius: 50%;
-      animation: spin .8s linear infinite;
-    }
-    @keyframes spin { to{ transform:rotate(360deg) } }
-
-    #errorEl {
-      position: absolute; inset:0;
-      display: none; align-items: center; justify-content: center;
-      flex-direction: column; gap: 10px;
-      background: rgba(0,0,0,.82);
-      font-size: clamp(.9rem,4vw,1.05rem);
-      text-align: center; padding: 20px; line-height: 1.5;
-    }
-    #errorEl.vis { display: flex; }
-    #errorEl .ei { font-size: 2.4rem; }
-
-    /* ── Now playing ── */
-    #nowPlaying {
-      background: var(--bg2);
-      border-bottom: 1px solid var(--border);
-      padding: 7px 14px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      flex-shrink: 0;
-    }
-    #nowName {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: clamp(1.1rem, 5.5vw, 1.5rem);
-      font-weight: 900;
-      color: var(--accent);
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
-    #muteBtn {
-      width: 46px; height: 46px;
-      background: var(--bg3);
-      border: 2px solid var(--border);
-      border-radius: 11px;
-      display: flex; align-items: center; justify-content: center;
-      cursor: pointer; flex-shrink: 0;
-      font-size: 1.5rem; user-select: none;
-    }
-    #muteBtn:active { transform: scale(.93); }
-
-    /* ── 3×3 Grid ── */
-    #grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      grid-template-rows: repeat(3, 1fr);
-      gap: 6px;
-      padding: 6px;
-      flex: 1;
-      min-height: 0;
-    }
-
-    .ch-btn {
-      background: var(--bg3);
-      border: 2px solid var(--border);
-      border-radius: 14px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      padding: 4px 6px;
-      transition: background .1s, border-color .1s, transform .08s;
-      user-select: none;
-      -webkit-user-select: none;
-      touch-action: manipulation;
-    }
-
-    .ch-btn span {
-      font-family: 'Source Serif 4', Georgia, serif;
-      font-size: clamp(.72rem, 3.5vw, 1rem);
-      font-weight: 600;
-      color: var(--text);
-      text-align: center;
-      line-height: 1.2;
-      pointer-events: none;
-    }
-
-    .ch-btn.active {
-      background: var(--accent);
-      border-color: var(--accent);
-    }
-    .ch-btn.active span { color: #0d1018; }
-    .ch-btn:active { transform: scale(.94); }
-
-    /* ── Landscape: fullscreen video ── */
-    @media (orientation: landscape) {
-      #header, #nowPlaying, #grid { display: none !important; }
-      body { overflow: hidden; }
-      #playerWrap {
-        position: fixed !important;
-        inset: 0 !important;
-        width: 100vw !important;
-        height: 100vh !important;
-        z-index: 999;
-      }
-      #player { object-fit: contain; }
-    }
-  </style>
+/* LANDSCAPE: fullscreen video only */
+@media (orientation:landscape){
+  #hdr,#now,#grid{display:none!important}
+  body{overflow:hidden}
+  #pwrap{
+    position:fixed!important;
+    inset:0!important;
+    width:100vw!important;
+    height:100vh!important;
+    z-index:999;
+  }
+}
+</style>
 </head>
 <body>
 
-  <div id="header">
-    <div class="live-dot"></div>
-    <h1>HAUSEN AM STREAM</h1>
+<div id="hdr">
+  <div class="dot"></div>
+  <h1>HAUSEN AM STREAM</h1>
+</div>
+
+<div id="pwrap">
+  <video id="vid" playsinline autoplay muted controls></video>
+  <div id="spin" class="on"><div class="ring"></div></div>
+  <div id="err">
+    <span class="ico">&#128225;</span>
+    <span>Sender konnte nicht geladen werden.<br>Bitte anderen Sender wählen.</span>
   </div>
+</div>
 
-  <div id="playerWrap">
-    <video id="player" playsinline autoplay muted controls></video>
-    <div id="spinnerEl" class="vis"><div class="spinner"></div></div>
-    <div id="errorEl">
-      <span class="ei">📡</span>
-      <div>Sender konnte nicht geladen werden.<br>Bitte anderen Sender wählen.</div>
-    </div>
-  </div>
+<div id="now">
+  <div id="nowname">Wird geladen &#8230;</div>
+  <div id="mute">&#128266;</div>
+</div>
 
-  <div id="nowPlaying">
-    <div id="nowName">Wird geladen …</div>
-    <div id="muteBtn">🔊</div>
-  </div>
+<div id="grid"></div>
 
-  <div id="grid"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.7/hls.min.js"></script>
+<script>
+var CH = [
+  {n:"ARD",     u:"https://daserste-live.ard-mcdn.de/daserste/live/hls/de/master.m3u8"},
+  {n:"ZDF",     u:"https://zdf-hls-15.akamaized.net/hls/live/2016498/de/high/master.m3u8"},
+  {n:"SWR BW",  u:"https://swrbwd-hls.akamaized.net/hls/live/2018672/swrbwd/master.m3u8"},
+  {n:"PHOENIX", u:"https://zdf-hls-19.akamaized.net/hls/live/2016502/de/high/master.m3u8"},
+  {n:"NDR",     u:"https://mcdn.ndr.de/ndr/hls/ndr_fs/ndr_nds/master.m3u8"},
+  {n:"BR Süd",  u:"https://mcdn.br.de/br/fs/bfs_sued/hls/de/master.m3u8"},
+  {n:"WDR",     u:"https://wdrfs247.akamaized.net/hls/live/681509/wdr_msl4_fs247/index.m3u8"},
+  {n:"ARTE DE", u:"https://artesimulcast.akamaized.net/hls/live/2030993/artelive_de/index.m3u8"},
+  {n:"3sat",    u:"https://zdf-hls-18.akamaized.net/hls/live/2016501/dach/high/master.m3u8"}
+];
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.7/hls.min.js"></script>
-  <script>
-    const CHANNELS = [
-      // ARD – HTTPS ✓
-      { name:"ARD",
-        url:"https://daserste-live.ard-mcdn.de/daserste/live/hls/de/master.m3u8" },
-      // ZDF – http → https
-      { name:"ZDF",
-        url:"https://zdf-hls-15.akamaized.net/hls/live/2016498/de/high/master.m3u8" },
-      // SWR BW – HTTPS ✓
-      { name:"SWR BW",
-        url:"https://swrbwd-hls.akamaized.net/hls/live/2018672/swrbwd/master.m3u8" },
-      // PHOENIX – http → https
-      { name:"PHOENIX",
-        url:"https://zdf-hls-19.akamaized.net/hls/live/2016502/de/high/master.m3u8" },
-      // NDR – HTTPS ✓
-      { name:"NDR Nieders.",
-        url:"https://mcdn.ndr.de/ndr/hls/ndr_fs/ndr_nds/master.m3u8" },
-      // BR Süd – HTTPS ✓
-      { name:"BR Süd",
-        url:"https://mcdn.br.de/br/fs/bfs_sued/hls/de/master.m3u8" },
-      // WDR – alternative CDN URL (geo-open)
-      { name:"WDR",
-        url:"https://wdrfs247.akamaized.net/hls/live/681509/wdr_msl4_fs247/index.m3u8" },
-      // ARTE DE – HTTPS ✓
-      { name:"ARTE DE",
-        url:"https://artesimulcast.akamaized.net/hls/live/2030993/artelive_de/index.m3u8" },
-      // 3sat – http → https
-      { name:"3sat",
-        url:"https://zdf-hls-18.akamaized.net/hls/live/2016501/dach/high/master.m3u8" },
-    ];
+var vid      = document.getElementById("vid");
+var spinEl   = document.getElementById("spin");
+var errEl    = document.getElementById("err");
+var nowEl    = document.getElementById("nowname");
+var muteEl   = document.getElementById("mute");
+var gridEl   = document.getElementById("grid");
+var pwrap    = document.getElementById("pwrap");
+var hdr      = document.getElementById("hdr");
+var nowBar   = document.getElementById("now");
 
-    const video      = document.getElementById('player');
-    const spinnerEl  = document.getElementById('spinnerEl');
-    const errorEl    = document.getElementById('errorEl');
-    const nowName    = document.getElementById('nowName');
-    const muteBtn    = document.getElementById('muteBtn');
-    const gridEl     = document.getElementById('grid');
-    const playerWrap = document.getElementById('playerWrap');
+var hls      = null;
+var curIdx   = -1;
+var muted    = false;
 
-    let hls      = null;
-    let activeIdx= -1;
-    let muted    = false;
+function sizePlayer() {
+  if (window.innerWidth > window.innerHeight) return;
+  var total  = window.innerHeight;
+  var hdrH   = hdr.offsetHeight;
+  var nowH   = nowBar.offsetHeight;
+  var avail  = total - hdrH - nowH;
+  pwrap.style.height = Math.floor(avail * 0.46) + "px";
+}
 
-    // ── Portrait: size player so grid always fits ──────────
-    function sizePlayer() {
-      if (window.matchMedia('(orientation: landscape)').matches) return;
-      const vh      = window.innerHeight;
-      const headerH = document.getElementById('header').offsetHeight;
-      const nowH    = document.getElementById('nowPlaying').offsetHeight;
-      const gridH   = Math.floor((vh - headerH - nowH) * 0.52);
-      playerWrap.style.height = (vh - headerH - nowH - gridH) + 'px';
-    }
-
-    window.addEventListener('resize', sizePlayer);
-
-    // ── Build 3×3 buttons ──────────────────────────────────
-    CHANNELS.forEach((ch, i) => {
-      const btn = document.createElement('button');
-      btn.className = 'ch-btn';
-      btn.id = 'btn-' + i;
-      btn.setAttribute('aria-label', ch.name + ' abspielen');
-      btn.innerHTML = `<span>${ch.name}</span>`;
-
-      // touchstart → instant, no 300ms delay on iOS
-      btn.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        i === activeIdx
-          ? (video.paused ? video.play() : video.pause())
-          : loadChannel(i);
-      }, { passive: false });
-
-      // mouse fallback
-      btn.addEventListener('click', () => {
-        i === activeIdx
-          ? (video.paused ? video.play() : video.pause())
-          : loadChannel(i);
-      });
-
-      gridEl.appendChild(btn);
+function loadCh(i) {
+  if (curIdx >= 0) {
+    var old = document.getElementById("b"+curIdx);
+    if (old) old.classList.remove("active");
+  }
+  curIdx = i;
+  var btn = document.getElementById("b"+i);
+  if (btn) btn.classList.add("active");
+  nowEl.textContent = CH[i].n;
+  errEl.classList.remove("on");
+  spinEl.classList.add("on");
+  if (hls) { hls.destroy(); hls = null; }
+  if (window.Hls && Hls.isSupported()) {
+    hls = new Hls({enableWorker:false,lowLatencyMode:true});
+    hls.loadSource(CH[i].u);
+    hls.attachMedia(vid);
+    hls.on(Hls.Events.MANIFEST_PARSED, function() {
+      vid.muted = muted;
+      vid.play().catch(function(){});
     });
-
-    // ── Load channel ───────────────────────────────────────
-    function loadChannel(idx) {
-      const ch = CHANNELS[idx];
-
-      if (activeIdx >= 0) document.getElementById('btn-' + activeIdx)?.classList.remove('active');
-      activeIdx = idx;
-      document.getElementById('btn-' + idx)?.classList.add('active');
-
-      nowName.textContent = ch.name;
-      errorEl.classList.remove('vis');
-      spinnerEl.classList.add('vis');
-
-      if (hls) { hls.destroy(); hls = null; }
-
-      if (Hls.isSupported()) {
-        hls = new Hls({ enableWorker: false, lowLatencyMode: true });
-        hls.loadSource(ch.url);
-        hls.attachMedia(video);
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          video.muted = muted;
-          video.play().catch(() => {});
-        });
-        hls.on(Hls.Events.ERROR, (_, d) => {
-          if (d.fatal) { spinnerEl.classList.remove('vis'); errorEl.classList.add('vis'); }
-        });
-      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        // iOS Safari native HLS
-        video.src = ch.url;
-        video.muted = muted;
-        video.play().catch(() => {});
-      } else {
-        spinnerEl.classList.remove('vis');
-        errorEl.classList.add('vis');
-      }
-    }
-
-    video.addEventListener('playing', () => spinnerEl.classList.remove('vis'));
-    video.addEventListener('waiting', () => spinnerEl.classList.add('vis'));
-    video.addEventListener('error',   () => { spinnerEl.classList.remove('vis'); errorEl.classList.add('vis'); });
-
-    muteBtn.addEventListener('click', () => {
-      muted = !muted;
-      video.muted = muted;
-      muteBtn.textContent = muted ? '🔇' : '🔊';
+    hls.on(Hls.Events.ERROR, function(e,d) {
+      if (d.fatal) { spinEl.classList.remove("on"); errEl.classList.add("on"); }
     });
+  } else if (vid.canPlayType("application/vnd.apple.mpegurl")) {
+    vid.src = CH[i].u;
+    vid.muted = muted;
+    vid.play().catch(function(){});
+  } else {
+    spinEl.classList.remove("on");
+    errEl.classList.add("on");
+  }
+}
 
-    // Auto-start
-    setTimeout(() => { sizePlayer(); loadChannel(0); }, 250);
-  </script>
-</body>
-</html>            letter-spacing: -0.3px;
-        }
-        
-        .main {
-            display: flex;
-            flex-direction: column;
-            height: calc(100vh - 52px);
-        }
-        
-        .player-area {
-            flex: 0 0 42vh;
-            background: #0a0a0a;
-            position: relative;
-            min-height: 240px;
-            box-shadow: inset 0 4px 30px rgba(0,0,0,0.6);
-        }
-        
-        #video {
-            width: 100% !important;
-            height: 100% !important;
-            object-fit: contain;
-            display: block;
-        }
-        
-        .channel-name {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: rgba(255,255,255,0.12);
-            backdrop-filter: blur(16px);
-            color: white;
-            padding: 12px 18px;
-            font-size: 1.6rem;
-            font-weight: 700;
-            text-align: center;
-            text-shadow: 0 2px 8px rgba(0,0,0,0.5);
-            border-top: 1px solid rgba(255,255,255,0.2);
-        }
-        
-        .channel-list {
-            flex: 1;
-            background: rgba(255,255,255,0.75);
-            backdrop-filter: blur(24px);
-            padding: 14px;
-            display: flex;
-            flex-direction: column;
-            border-top: 1px solid rgba(255,255,255,0.6);
-        }
-        
-        .buttons-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 13px;
-            flex: 1;
-            align-content: stretch;
-        }
-        
-        .channel-btn {
-            aspect-ratio: 1 / 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.12rem;
-            font-weight: 700;
-            color: #1e40af;
-            background: rgba(255,255,255,0.68);
-            backdrop-filter: blur(20px);
-            border: 1.5px solid rgba(255,255,255,0.8);
-            border-radius: 20px;
-            box-shadow: 0 8px 25px rgba(30, 58, 138, 0.12),
-                        inset 0 2px 8px rgba(255,255,255,0.95);
-            padding: 10px;
-            line-height: 1.05;
-            text-align: center;
-            transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
-            -webkit-user-select: none;
-        }
-        
-        .channel-btn:active {
-            transform: scale(0.93) translateY(3px);
-            box-shadow: 0 4px 12px rgba(30, 58, 138, 0.22);
-            background: rgba(255,255,255,0.88);
-        }
-        
-        /* iPhone & kleine Handys */
-        @media (max-width: 767px) {
-            .player-area { flex: 0 0 40vh; }
-            .channel-btn { font-size: 1.05rem; }
-            .buttons-grid { gap: 11px; }
-        }
-        
-        /* Querformat = echtes Vollbild */
-        @media (orientation: landscape) {
-            .player-area { 
-                flex: 0 0 100vh; 
-                min-height: 100vh;
-            }
-            .channel-list { display: none; }
-            #video { object-fit: cover; }
-        }
-        
-        /* Hochformat = alles wieder da */
-        @media (orientation: portrait) {
-            .player-area { flex: 0 0 42vh; }
-            .channel-list { display: flex; }
-            #video { object-fit: contain; }
-        }
-    </style>
-</head>
-<body>
-    <div class="top-bar">HAUSEN AM STREAM</div>
-    
-    <div class="main">
-        <!-- PLAYER -->
-        <div class="player-area">
-            <video id="video" controls autoplay playsinline></video>
-            <div id="current-channel" class="channel-name">Kanal auswählen</div>
-        </div>
-        
-        <!-- 9 GLASMORPHIC KNÖPFE – perfekt skaliert -->
-        <div class="channel-list">
-            <div class="buttons-grid" id="buttons-grid"></div>
-        </div>
-    </div>
+vid.addEventListener("playing", function(){ spinEl.classList.remove("on"); });
+vid.addEventListener("waiting", function(){ spinEl.classList.add("on"); });
+vid.addEventListener("error",   function(){ spinEl.classList.remove("on"); errEl.classList.add("on"); });
 
-    <script>
-        const video = document.getElementById('video');
-        let hlsPlayer = null;
-        
-        function playChannel(url, name) {
-            document.getElementById('current-channel').textContent = name;
-            
-            if (hlsPlayer) {
-                hlsPlayer.destroy();
-                hlsPlayer = null;
-            }
-            
-            if (Hls.isSupported()) {
-                hlsPlayer = new Hls({ 
-                    lowLatencyMode: true, 
-                    maxBufferLength: 30,
-                    backBufferLength: 30
-                });
-                hlsPlayer.loadSource(url);
-                hlsPlayer.attachMedia(video);
-                hlsPlayer.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(() => {}));
-            } else {
-                video.src = url;
-                video.play().catch(() => {});
-            }
-        }
-        
-        const channels = [
-            {name: "ARD",          url: "https://daserste-live.ard-mcdn.de/daserste/live/hls/de/master.m3u8"},
-            {name: "ZDF",          url: "https://zdf-hls-15.akamaized.net/hls/live/2016498/de/high/master.m3u8"},
-            {name: "SWR BW",       url: "https://swrbwd-hls.akamaized.net/hls/live/2018672/swrbwd/master.m3u8"},
-            {name: "PHOENIX",      url: "https://zdf-hls-19.akamaized.net/hls/live/2016502/de/high/master.m3u8"},
-            {name: "NDR Niedersachsen", url: "https://mcdn.ndr.de/ndr/hls/ndr_fs/ndr_nds/master.m3u8"},
-            {name: "BR Süd",       url: "https://mcdn.br.de/br/fs/bfs_sued/hls/de/master.m3u8"},
-            {name: "WDR (weltweit)", url: "https://mcdn.wdr.de/wdr/wdrfs/de/master.m3u8"},
-            {name: "ARTE DE",      url: "https://artesimulcast.akamaized.net/hls/live/2030993/artelive_de/index.m3u8"},
-            {name: "3Sat",         url: "https://zdf-hls-18.akamaized.net/hls/live/2016501/dach/high/master.m3u8"}
-        ];
-        
-        function createButtons() {
-            const grid = document.getElementById('buttons-grid');
-            grid.innerHTML = '';
-            
-            channels.forEach(ch => {
-                const btn = document.createElement('button');
-                btn.className = 'channel-btn';
-                btn.textContent = ch.name;
-                btn.addEventListener('click', () => playChannel(ch.url, ch.name));
-                grid.appendChild(btn);
-            });
-        }
-        
-        function fixVideoLayout() {
-            video.style.width = '100%';
-            video.style.height = '100%';
-            setTimeout(() => {
-                video.style.width = '100%';
-                video.style.height = '100%';
-            }, 80);
-        }
-        
-        function handleOrientation() {
-            window.addEventListener('orientationchange', () => {
-                setTimeout(() => {
-                    const isPortrait = window.innerHeight > window.innerWidth;
-                    
-                    if (isPortrait) {
-                        if (document.fullscreenElement || document.webkitFullscreenElement) {
-                            if (video.webkitExitFullscreen) video.webkitExitFullscreen();
-                            else if (document.exitFullscreen) document.exitFullscreen();
-                        }
-                        fixVideoLayout();
-                    } else {
-                        if (video.webkitEnterFullscreen) video.webkitEnterFullscreen();
-                        else if (video.requestFullscreen) video.requestFullscreen();
-                    }
-                }, 180);
-            });
-            
-            // Extra Sicherheit bei Resize (z.B. iPhone dreht zurück)
-            window.addEventListener('resize', () => {
-                fixVideoLayout();
-            });
-        }
-        
-        // START
-        window.onload = () => {
-            createButtons();
-            handleOrientation();
-            
-            // ARD startet automatisch
-            setTimeout(() => {
-                playChannel(channels[0].url, channels[0].name);
-            }, 400);
-        };
-    </script>
+muteEl.addEventListener("click", function() {
+  muted = !muted;
+  vid.muted = muted;
+  muteEl.innerHTML = muted ? "&#128263;" : "&#128266;";
+});
+
+for (var j = 0; j < CH.length; j++) {
+  (function(idx) {
+    var btn = document.createElement("button");
+    btn.className = "cb";
+    btn.id = "b" + idx;
+    var sp = document.createElement("span");
+    sp.textContent = CH[idx].n;
+    btn.appendChild(sp);
+    btn.addEventListener("touchstart", function(e) {
+      e.preventDefault();
+      if (idx === curIdx) { vid.paused ? vid.play() : vid.pause(); }
+      else { loadCh(idx); }
+    }, {passive:false});
+    btn.addEventListener("click", function() {
+      if (idx === curIdx) { vid.paused ? vid.play() : vid.pause(); }
+      else { loadCh(idx); }
+    });
+    gridEl.appendChild(btn);
+  })(j);
+}
+
+window.addEventListener("resize", sizePlayer);
+setTimeout(function(){ sizePlayer(); loadCh(0); }, 200);
+</script>
 </body>
 </html>
