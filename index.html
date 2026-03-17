@@ -236,17 +236,6 @@ function loadStream(url) {
   }
 }
 
-/* ── Vollständig stoppen + Lock-Screen-Controls entfernen ── */
-function stopStream() {
-  if (hlsPlayer) { hlsPlayer.destroy(); hlsPlayer = null; }
-  video.pause();
-  video.src = '';
-  video.load();
-  if ('mediaSession' in navigator) {
-    navigator.mediaSession.playbackState = 'none';
-  }
-}
-
 function setActive(idx) {
   curIdx = idx;
   updateTileState();
@@ -284,11 +273,13 @@ for (var i = 0; i < channels.length; i++) {
       }
       if (idx === curIdx) {
         if (video.paused) {
-          /* Stream neu laden statt nur play(), da src nach Stop leer ist */
-          loadStream(channels[idx].url);
+          video.play().catch(function(){});
         } else {
-          /* Hart stoppen – entfernt den Play-Button vom Sperrbildschirm */
-          stopStream();
+          /* Nur pausieren – Bild bleibt eingefroren, kein schwarzes Bild */
+          video.pause();
+          if ('mediaSession' in navigator) {
+            navigator.mediaSession.playbackState = 'none';
+          }
         }
         updateTileState();
       } else {
@@ -326,6 +317,13 @@ window.onload = function() {
    session may be dead (network timeout, buffer stall, etc.)
    We detect this via visibilitychange and reload if needed. */
 document.addEventListener('visibilitychange', function() {
+  /* App geht in Hintergrund → Lock-Screen-Controls sofort entfernen */
+  if (document.visibilityState === 'hidden') {
+    if ('mediaSession' in navigator) {
+      navigator.mediaSession.playbackState = 'none';
+    }
+    return;
+  }
   if (document.visibilityState !== 'visible') return;
   if (curIdx < 0) return;
 
