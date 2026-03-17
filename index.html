@@ -1,259 +1,424 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>HAUSEN AM STREAM</title>
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.13/dist/hls.min.js"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@600;700&display=swap');
-        
-        * { box-sizing: border-box; margin:0; padding:0; }
-        
-        body {
-            font-family: 'Inter', Arial, sans-serif;
-            background: linear-gradient(180deg, #f0f4fa, #e6edf7);
-            color: #1e3a8a;
-            overflow: hidden;
-            height: 100vh;
-            -webkit-tap-highlight-color: transparent;
-        }
-        
-        .top-bar {
-            background: rgba(30, 58, 138, 0.85);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            color: white;
-            text-align: center;
-            padding: 14px 10px;
-            font-size: 1.4rem;
-            font-weight: 700;
-            position: sticky;
-            top: 0;
-            z-index: 20;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-            letter-spacing: -0.5px;
-        }
-        
-        .main {
-            display: flex;
-            flex-direction: column;
-            height: calc(100vh - 58px);
-        }
-        
-        .player-area {
-            flex: 0 0 42vh;
-            background: #0a0a0a;
-            position: relative;
-            min-height: 240px;
-            box-shadow: inset 0 4px 30px rgba(0,0,0,0.6);
-        }
-        
-        #video {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-        }
-        
-        .channel-name {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: rgba(255,255,255,0.12);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            color: white;
-            padding: 14px 18px;
-            font-size: 1.65rem;
-            font-weight: 700;
-            text-align: center;
-            text-shadow: 0 2px 8px rgba(0,0,0,0.5);
-            border-top: 1px solid rgba(255,255,255,0.2);
-        }
-        
-        .channel-list {
-            flex: 1;
-            background: rgba(255,255,255,0.75);
-            backdrop-filter: blur(24px);
-            -webkit-backdrop-filter: blur(24px);
-            padding: 16px 14px 14px;
-            display: flex;
-            flex-direction: column;
-            border-top: 1px solid rgba(255,255,255,0.6);
-        }
-        
-        .channel-list h2 {
-            font-size: 1.35rem;
-            font-weight: 600;
-            color: #1e40af;
-            text-align: center;
-            margin-bottom: 14px;
-            opacity: 0.85;
-        }
-        
-        .buttons-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 14px;
-            flex: 1;
-            align-content: stretch;
-        }
-        
-        .channel-btn {
-            aspect-ratio: 1 / 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: #1e40af;
-            background: rgba(255,255,255,0.65);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1.5px solid rgba(255,255,255,0.75);
-            border-radius: 22px;
-            box-shadow: 0 10px 30px rgba(30, 58, 138, 0.15),
-                        inset 0 2px 8px rgba(255,255,255,0.9);
-            padding: 12px;
-            line-height: 1.1;
-            text-align: center;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            -webkit-user-select: none;
-        }
-        
-        .channel-btn:active {
-            transform: scale(0.94) translateY(2px);
-            box-shadow: 0 4px 12px rgba(30, 58, 138, 0.25);
-            background: rgba(255,255,255,0.85);
-        }
-        
-        /* Perfekte Anpassung an Höhe & Breite */
-        @media (max-width: 767px) {
-            .player-area { flex: 0 0 40vh; }
-            .channel-btn { font-size: 1.18rem; }
-            .buttons-grid { gap: 12px; }
-        }
-        
-        @media (min-width: 768px) {
-            .buttons-grid { grid-template-columns: repeat(3, 1fr); }
-            .channel-btn { font-size: 1.42rem; }
-        }
-        
-        /* Extra Sicherheit für Rotation */
-        @media (orientation: landscape) {
-            .player-area { flex: 0 0 100vh; }
-            .channel-list { display: none; }
-        }
-        
-        @media (orientation: portrait) {
-            .player-area { flex: 0 0 42vh; }
-            .channel-list { display: flex; }
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>HAUSEN AM STREAM</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Source+Serif+4:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:      #0d1018;
+      --bg2:     #161b28;
+      --bg3:     #1c2235;
+      --card:    #1e2640;
+      --accent:  #f0a500;
+      --accent2: #c47f00;
+      --text:    #eee8d8;
+      --muted:   #7a7e96;
+      --red:     #e63946;
+      --border:  #262d45;
+    }
+
+    * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+    html, body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Source Serif 4', Georgia, serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ═══ HEADER ════════════════════════════════════════════ */
+    header {
+      background: var(--bg2);
+      border-bottom: 3px solid var(--accent);
+      padding: 13px 16px 11px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      position: sticky;
+      top: 0;
+      z-index: 200;
+    }
+
+    .live-dot {
+      width: 11px; height: 11px;
+      background: var(--red);
+      border-radius: 50%;
+      flex-shrink: 0;
+      animation: blink 1.4s infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.2} }
+
+    header h1 {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: clamp(1.15rem, 5.5vw, 1.8rem);
+      font-weight: 900;
+      color: var(--accent);
+      letter-spacing: .03em;
+      line-height: 1;
+    }
+
+    /* ═══ PLAYER ════════════════════════════════════════════ */
+    .player-wrap {
+      background: #000;
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16/9;
+    }
+
+    #player {
+      width: 100%;
+      height: 100%;
+      display: block;
+      background: #000;
+      object-fit: contain;
+    }
+
+    .spinner-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,.65);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity .25s;
+    }
+    .spinner-overlay.vis { opacity: 1; }
+
+    .spinner {
+      width: 52px; height: 52px;
+      border: 4px solid rgba(240,165,0,.2);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .85s linear infinite;
+    }
+    @keyframes spin { to{ transform:rotate(360deg) } }
+
+    .error-overlay {
+      position: absolute;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 12px;
+      background: rgba(0,0,0,.82);
+      color: var(--text);
+      font-size: clamp(.95rem, 4vw, 1.1rem);
+      text-align: center;
+      padding: 24px;
+      line-height: 1.5;
+    }
+    .error-overlay.vis { display: flex; }
+    .error-overlay .err-icon { font-size: 2.5rem; }
+
+    /* ═══ NOW PLAYING ══════════════════════════════════════ */
+    .now-playing {
+      background: var(--bg2);
+      padding: 13px 16px;
+      border-bottom: 2px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 72px;
+    }
+
+    .now-info { flex: 1; min-width: 0; }
+
+    .now-label {
+      font-size: .68rem;
+      letter-spacing: .2em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 3px;
+    }
+
+    .now-name {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: clamp(1.25rem, 6vw, 1.7rem);
+      font-weight: 700;
+      color: var(--accent);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .now-desc {
+      font-size: clamp(.76rem, 3.4vw, .88rem);
+      color: var(--muted);
+      margin-top: 3px;
+      line-height: 1.35;
+    }
+
+    .mute-btn {
+      width: 56px; height: 56px;
+      background: var(--bg3);
+      border: 2px solid var(--border);
+      border-radius: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      font-size: 1.7rem;
+      user-select: none;
+      transition: background .12s;
+    }
+    .mute-btn:active { background: var(--card); transform: scale(.94); }
+
+    /* ═══ CHANNEL LIST ══════════════════════════════════════ */
+    .section-label {
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: .22em;
+      text-transform: uppercase;
+      color: var(--muted);
+      background: var(--bg);
+      padding: 15px 16px 7px;
+      border-top: 1px solid var(--border);
+    }
+
+    .channel-list { padding-bottom: 54px; }
+
+    .channel-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 14px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+      transition: background .1s;
+    }
+    .channel-row.active { background: var(--bg3); }
+
+    .channel-name {
+      font-size: clamp(1rem, 4.8vw, 1.22rem);
+      font-weight: 600;
+      color: var(--text);
+      flex: 1;
+      line-height: 1.25;
+    }
+    .channel-row.active .channel-name { color: var(--accent); }
+
+    /* PLAY BUTTON */
+    .play-btn {
+      width: clamp(64px, 18vw, 78px);
+      height: clamp(64px, 18vw, 78px);
+      background: var(--accent);
+      border: none;
+      border-radius: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      box-shadow: 0 4px 14px rgba(240,165,0,.2);
+      transition: background .12s, transform .1s, box-shadow .12s;
+    }
+    .play-btn:active { background: var(--accent2); transform: scale(.93); }
+    .channel-row.active .play-btn {
+      background: var(--accent2);
+      box-shadow: 0 0 0 3px var(--accent), 0 4px 14px rgba(240,165,0,.25);
+    }
+    .play-btn svg {
+      width: clamp(24px, 7vw, 32px);
+      height: clamp(24px, 7vw, 32px);
+      fill: #0d1018;
+    }
+    .channel-row:not(.active) .icon-pause { display: none; }
+    .channel-row.active       .icon-play  { display: none; }
+
+    footer {
+      text-align: center;
+      padding: 20px 16px 38px;
+      color: var(--muted);
+      font-size: .75rem;
+      border-top: 1px solid var(--border);
+    }
+    footer strong { color: var(--accent); }
+  </style>
 </head>
 <body>
-    <div class="top-bar">HAUSEN AM STREAM</div>
-    
-    <div class="main">
-        <!-- PLAYER -->
-        <div class="player-area">
-            <video id="video" controls autoplay playsinline></video>
-            <div id="current-channel" class="channel-name">Kanal auswählen →</div>
-        </div>
-        
-        <!-- 9 GLASMORPHIC KNÖPFE – passen sich perfekt an -->
-        <div class="channel-list">
-          
-            <div class="buttons-grid" id="buttons-grid"></div>
-        </div>
-    </div>
 
-    <script>
-        const video = document.getElementById('video');
-        let hlsPlayer = null;
-        
-        function playChannel(url, name) {
-            document.getElementById('current-channel').textContent = name;
-            
-            if (hlsPlayer) {
-                hlsPlayer.destroy();
-                hlsPlayer = null;
-            }
-            
-            if (Hls.isSupported()) {
-                hlsPlayer = new Hls({ 
-                    lowLatencyMode: true, 
-                    maxBufferLength: 30,
-                    backBufferLength: 30
-                });
-                hlsPlayer.loadSource(url);
-                hlsPlayer.attachMedia(video);
-                hlsPlayer.on(Hls.Events.MANIFEST_PARSED, () => {
-                    video.play().catch(() => {});
-                });
-            } else {
-                video.src = url;
-                video.play().catch(() => {});
-            }
+  <header>
+    <div class="live-dot"></div>
+    <h1>HAUSEN AM STREAM</h1>
+  </header>
+
+  <div class="player-wrap">
+    <video id="player" playsinline autoplay muted controls></video>
+    <div class="spinner-overlay vis" id="spinnerEl">
+      <div class="spinner"></div>
+    </div>
+    <div class="error-overlay" id="errorEl">
+      <span class="err-icon">📡</span>
+      <div>Sender konnte nicht geladen werden.<br>Bitte einen anderen Sender wählen.</div>
+    </div>
+  </div>
+
+  <div class="now-playing">
+    <div class="now-info">
+      <div class="now-label">Läuft gerade</div>
+      <div class="now-name" id="nowName">Wird geladen …</div>
+      <div class="now-desc" id="nowDesc">Öffentlich-rechtliches Fernsehen · Live</div>
+    </div>
+    <div class="mute-btn" id="muteBtn">🔊</div>
+  </div>
+
+  <div class="channel-list" id="channelList"></div>
+
+  <footer><strong>HAUSEN AM STREAM</strong> · Öffentlich-rechtliches Live-Fernsehen</footer>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.7/hls.min.js"></script>
+  <script>
+  const CHANNELS = [
+    { section:"ARD",       name:"ARD",                        desc:"Das Erste · Hauptprogramm",                     url:"https://daserste-live.ard-mcdn.de/daserste/live/hls/de/master.m3u8" },
+    {                      name:"ARD ONE",                    desc:"Spielfilme, Serien & Reportagen",               url:"https://mcdn-one.ard.de/ardone/hls/master.m3u8" },
+    {                      name:"ARD Alpha",                  desc:"Bildung, Kultur & Wissenschaft",                url:"https://mcdn.br.de/br/fs/ard_alpha/hls/de/master.m3u8" },
+    {                      name:"ARD Tagesschau",             desc:"Nachrichten rund um die Uhr",                   url:"https://tagesschau.akamaized.net/hls/live/2020115/tagesschau/tagesschau_1/master.m3u8" },
+    { section:"ZDF",       name:"ZDF",                        desc:"Zweites Deutsches Fernsehen · Hauptprogramm",   url:"http://zdf-hls-15.akamaized.net/hls/live/2016498/de/high/master.m3u8" },
+    {                      name:"ZDF neo",                    desc:"Serien, Krimis & Unterhaltung",                 url:"http://zdf-hls-16.akamaized.net/hls/live/2016499/de/high/master.m3u8" },
+    {                      name:"ZDF info",                   desc:"Dokumentationen & Reportagen",                  url:"http://zdf-hls-17.akamaized.net/hls/live/2016500/de/high/master.m3u8" },
+    { section:"Gemeinsam", name:"PHOENIX",                    desc:"Politik, Geschichte & Zeitgeschehen",           url:"http://zdf-hls-19.akamaized.net/hls/live/2016502/de/high/master.m3u8" },
+    {                      name:"ARTE DE",                    desc:"Europäisches Kulturfernsehen auf Deutsch",      url:"https://artesimulcast.akamaized.net/hls/live/2030993/artelive_de/index.m3u8" },
+    {                      name:"ARTE FR",                    desc:"Europäisches Kulturfernsehen auf Französisch",  url:"https://artesimulcast.akamaized.net/hls/live/2031003/artelive_fr/index.m3u8" },
+    {                      name:"3sat",                       desc:"Kultur, Wissenschaft & Gesellschaft",           url:"https://zdf-hls-18.akamaized.net/hls/live/2016501/dach/high/master.m3u8" },
+    {                      name:"KiKA",                       desc:"Kinderfernsehen · Für die Enkel",               url:"https://kikageohls.akamaized.net/hls/live/2022693/livetvkika_de/master.m3u8" },
+    {                      name:"DW",                         desc:"Deutsche Welle · Internationales Fernsehen",    url:"https://dwamdstream111.akamaized.net/hls/live/2017972/dwstream111/index.m3u8" },
+    { section:"MDR",       name:"MDR Sachsen",                desc:"Mitteldeutscher Rundfunk · Sachsen",            url:"https://mdrtvsnhls.akamaized.net/hls/live/2016928/mdrtvsn/master.m3u8" },
+    {                      name:"MDR Thüringen",              desc:"Mitteldeutscher Rundfunk · Thüringen",          url:"https://mdrtvthhls.akamaized.net/hls/live/2016880/mdrtvth/master.m3u8" },
+    {                      name:"MDR Sachsen-Anhalt",         desc:"Mitteldeutscher Rundfunk · Sachsen-Anhalt",     url:"https://mdrtvsahls.akamaized.net/hls/live/2016879/mdrtvsa/master.m3u8" },
+    { section:"NDR",       name:"NDR Niedersachsen",          desc:"Norddeutscher Rundfunk · Niedersachsen",        url:"https://mcdn.ndr.de/ndr/hls/ndr_fs/ndr_nds/master.m3u8" },
+    {                      name:"NDR Hamburg",                desc:"Norddeutscher Rundfunk · Hamburg",              url:"https://mcdn.ndr.de/ndr/hls/ndr_fs/ndr_hh/master.m3u8" },
+    {                      name:"NDR Mecklenburg-Vorpommern", desc:"Norddeutscher Rundfunk · MV",                   url:"https://mcdn.ndr.de/ndr/hls/ndr_fs/ndr_mv/master.m3u8" },
+    {                      name:"NDR Schleswig-Holstein",     desc:"Norddeutscher Rundfunk · SH",                   url:"https://mcdn.ndr.de/ndr/hls/ndr_fs/ndr_sh/master.m3u8" },
+    { section:"RBB",       name:"RBB Berlin",                 desc:"Rundfunk Berlin-Brandenburg · Berlin",          url:"https://rbb-hls-berlin.akamaized.net/hls/live/2017824/rbb_berlin/master.m3u8" },
+    {                      name:"RBB Brandenburg",            desc:"Rundfunk Berlin-Brandenburg · Brandenburg",     url:"https://rbb-hls-brandenburg.akamaized.net/hls/live/2017825/rbb_brandenburg/master.m3u8" },
+    { section:"WDR",       name:"WDR (weltweit)",             desc:"Westdeutscher Rundfunk · International",        url:"https://mcdn.wdr.de/wdr/wdrfs/de/master.m3u8" },
+    {                      name:"WDR (Deutschland)",          desc:"Westdeutscher Rundfunk · Deutschland",          url:"https://wdrfs247.akamaized.net/hls/live/681509/wdr_msl4_fs247/index.m3u8" },
+    {                      name:"WDR Lokalzeit Aachen",       desc:"Lokalprogramm Aachen",                          url:"https://wdrlokalzeit.akamaized.net/hls/live/2018019/wdrlz_aachen/index.m3u8" },
+    {                      name:"WDR Lokalzeit Berg. Land",   desc:"Lokalprogramm Bergisches Land",                 url:"https://wdrlokalzeit.akamaized.net/hls/live/2018028/wdrlz_wuppertal/index.m3u8" },
+    {                      name:"WDR Lokalzeit Bonn",         desc:"Lokalprogramm Bonn",                            url:"https://wdrlokalzeit.akamaized.net/hls/live/2018021/wdrlz_bonn/index.m3u8" },
+    {                      name:"WDR Lokalzeit Dortmund",     desc:"Lokalprogramm Dortmund",                        url:"https://wdrlokalzeit.akamaized.net/hls/live/2018022/wdrlz_dortmund/index.m3u8" },
+    {                      name:"WDR Lokalzeit Duisburg",     desc:"Lokalprogramm Duisburg",                        url:"https://wdrlokalzeit.akamaized.net/hls/live/2018024/wdrlz_duisburg/index.m3u8" },
+    {                      name:"WDR Lokalzeit Düsseldorf",   desc:"Lokalprogramm Düsseldorf",                      url:"https://wdrlokalzeit.akamaized.net/hls/live/2018023/wdrlz_duesseldorf/index.m3u8" },
+    {                      name:"WDR Lokalzeit Köln",         desc:"Lokalprogramm Köln",                            url:"https://wdrlokalzeit.akamaized.net/hls/live/2023550/wdrlz_koeln/index.m3u8" },
+    {                      name:"WDR Lokalzeit Münsterland",  desc:"Lokalprogramm Münsterland",                     url:"https://wdrlokalzeit.akamaized.net/hls/live/2018025/wdrlz_muensterland/index.m3u8" },
+    {                      name:"WDR Lokalzeit OWL",          desc:"Lokalprogramm Ostwestfalen-Lippe",              url:"https://wdrlokalzeit.akamaized.net/hls/live/2018026/wdrlz_bielefeld/index.m3u8" },
+    {                      name:"WDR Lokalzeit Ruhr",         desc:"Lokalprogramm Ruhrgebiet",                      url:"https://wdrlokalzeit.akamaized.net/hls/live/2018027/wdrlz_essen/index.m3u8" },
+    {                      name:"WDR Lokalzeit Südwestfalen", desc:"Lokalprogramm Südwestfalen",                    url:"https://wdrlokalzeit.akamaized.net/hls/live/2018020/wdrlz_siegen/index.m3u8" },
+    { section:"Länder",    name:"BR Nord",                    desc:"Bayerischer Rundfunk · Nord",                   url:"https://mcdn.br.de/br/fs/bfs_nord/hls/de/master.m3u8" },
+    {                      name:"BR Süd",                     desc:"Bayerischer Rundfunk · Süd",                    url:"https://mcdn.br.de/br/fs/bfs_sued/hls/de/master.m3u8" },
+    {                      name:"HR",                         desc:"Hessischer Rundfunk · Hessen",                  url:"https://hrhls.akamaized.net/hls/live/2024525/hrhls/master.m3u8" },
+    {                      name:"SR",                         desc:"Saarländischer Rundfunk",                       url:"https://srfs.akamaized.net/hls/live/689649/srfsgeo/index.m3u8" },
+    {                      name:"SWR BW",                     desc:"Südwestrundfunk · Baden-Württemberg",           url:"https://swrbwd-hls.akamaized.net/hls/live/2018672/swrbwd/master.m3u8" },
+    {                      name:"SWR RP",                     desc:"Südwestrundfunk · Rheinland-Pfalz",             url:"https://swrrpd-hls.akamaized.net/hls/live/2018676/swrrpd/master.m3u8" },
+  ];
+
+  const video    = document.getElementById('player');
+  const spinnerEl= document.getElementById('spinnerEl');
+  const errorEl  = document.getElementById('errorEl');
+  const nowName  = document.getElementById('nowName');
+  const nowDesc  = document.getElementById('nowDesc');
+  const muteBtn  = document.getElementById('muteBtn');
+  const listEl   = document.getElementById('channelList');
+
+  let hls      = null;
+  let activeIdx= -1;
+  let muted    = false;
+
+  // ── Build list ───────────────────────────────────────────
+  const PLAY_ICON  = `<svg class="icon-play"  viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
+  const PAUSE_ICON = `<svg class="icon-pause" viewBox="0 0 24 24"><path d="M6 19h4V5H6zm8-14v14h4V5z"/></svg>`;
+
+  let html = '';
+  CHANNELS.forEach((ch, i) => {
+    if (ch.section) html += `<div class="section-label">${ch.section}</div>`;
+    html += `<div class="channel-row" id="row-${i}" data-idx="${i}">
+      <span class="channel-name">${ch.name}</span>
+      <button class="play-btn" aria-label="${ch.name} abspielen">${PLAY_ICON}${PAUSE_ICON}</button>
+    </div>`;
+  });
+  listEl.innerHTML = html;
+
+  // ── Click ────────────────────────────────────────────────
+  listEl.addEventListener('click', e => {
+    const row = e.target.closest('.channel-row');
+    if (!row) return;
+    const idx = parseInt(row.dataset.idx);
+    if (idx === activeIdx) {
+      video.paused ? video.play() : video.pause();
+    } else {
+      loadChannel(idx);
+    }
+  });
+
+  // ── Load ─────────────────────────────────────────────────
+  function loadChannel(idx) {
+    const ch = CHANNELS[idx];
+
+    if (activeIdx >= 0) {
+      document.getElementById('row-' + activeIdx)?.classList.remove('active');
+    }
+    activeIdx = idx;
+    const row = document.getElementById('row-' + idx);
+    row?.classList.add('active');
+    row?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    nowName.textContent = ch.name;
+    nowDesc.textContent = ch.desc;
+
+    errorEl.classList.remove('vis');
+    spinnerEl.classList.add('vis');
+
+    if (hls) { hls.destroy(); hls = null; }
+
+    if (Hls.isSupported()) {
+      hls = new Hls({ enableWorker: false, lowLatencyMode: true });
+      hls.loadSource(ch.url);
+      hls.attachMedia(video);
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        video.muted = muted;
+        video.play().catch(() => {});
+      });
+      hls.on(Hls.Events.ERROR, (_, d) => {
+        if (d.fatal) {
+          spinnerEl.classList.remove('vis');
+          errorEl.classList.add('vis');
         }
-        
-        const channels = [
-            {name: "ARD",          url: "https://daserste-live.ard-mcdn.de/daserste/live/hls/de/master.m3u8"},
-            {name: "ZDF",          url: "https://zdf-hls-15.akamaized.net/hls/live/2016498/de/high/master.m3u8"},
-            {name: "SWR BW",       url: "https://swrbwd-hls.akamaized.net/hls/live/2018672/swrbwd/master.m3u8"},
-            {name: "PHOENIX",      url: "https://zdf-hls-19.akamaized.net/hls/live/2016502/de/high/master.m3u8"},
-            {name: "NDR Niedersachsen", url: "https://mcdn.ndr.de/ndr/hls/ndr_fs/ndr_nds/master.m3u8"},
-            {name: "BR Süd",       url: "https://mcdn.br.de/br/fs/bfs_sued/hls/de/master.m3u8"},
-            {name: "WDR (weltweit)", url: "https://mcdn.wdr.de/wdr/wdrfs/de/master.m3u8"},
-            {name: "ARTE DE",      url: "https://artesimulcast.akamaized.net/hls/live/2030993/artelive_de/index.m3u8"},
-            {name: "3Sat",         url: "https://zdf-hls-18.akamaized.net/hls/live/2016501/dach/high/master.m3u8"}
-        ];
-        
-        function createButtons() {
-            const grid = document.getElementById('buttons-grid');
-            grid.innerHTML = '';
-            
-            channels.forEach(ch => {
-                const btn = document.createElement('button');
-                btn.className = 'channel-btn';
-                btn.textContent = ch.name;
-                btn.addEventListener('click', () => playChannel(ch.url, ch.name));
-                grid.appendChild(btn);
-            });
-        }
-        
-        // === VOLLBILD + AUTOMATISCHES ZURÜCKWECHSELN ===
-        function handleOrientation() {
-            let lastOrientation = window.orientation;
-            
-            window.addEventListener('orientationchange', () => {
-                setTimeout(() => {
-                    const isPortrait = (window.innerHeight > window.innerWidth);
-                    
-                    if (isPortrait && (document.fullscreenElement || document.webkitFullscreenElement)) {
-                        if (video.webkitExitFullscreen) video.webkitExitFullscreen();
-                        else if (document.exitFullscreen) document.exitFullscreen();
-                    } else if (!isPortrait) {
-                        if (video.webkitEnterFullscreen) video.webkitEnterFullscreen();
-                        else if (video.requestFullscreen) video.requestFullscreen();
-                    }
-                }, 250);
-            });
-        }
-        
-        // START
-        window.onload = () => {
-            createButtons();
-            handleOrientation();
-            
-            // ARD startet automatisch
-            setTimeout(() => {
-                playChannel(channels[0].url, channels[0].name);
-            }, 500);
-        };
-    </script>
+      });
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      // iOS Safari native HLS
+      video.src = ch.url;
+      video.muted = muted;
+      video.play().catch(() => {});
+    } else {
+      spinnerEl.classList.remove('vis');
+      errorEl.classList.add('vis');
+    }
+  }
+
+  video.addEventListener('playing', () => spinnerEl.classList.remove('vis'));
+  video.addEventListener('waiting', () => spinnerEl.classList.add('vis'));
+  video.addEventListener('error',   () => {
+    spinnerEl.classList.remove('vis');
+    errorEl.classList.add('vis');
+  });
+
+  muteBtn.addEventListener('click', () => {
+    muted = !muted;
+    video.muted = muted;
+    muteBtn.textContent = muted ? '🔇' : '🔊';
+  });
+
+  // ── Auto-start ARD ───────────────────────────────────────
+  setTimeout(() => loadChannel(0), 200);
+  </script>
 </body>
 </html>
