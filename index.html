@@ -3,19 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>HAUSEN AM STREAM</title>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.13/dist/hls.min.js"></script>
 <style>
-* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+* { box-sizing:border-box; margin:0; padding:0; }
 
 html, body {
-  width:100%; height:100%;
+  height:100%;
   background:#0d1018;
   color:#eee8d8;
   font-family: Georgia, serif;
   overflow:hidden;
+  -webkit-tap-highlight-color:transparent;
 }
 
-/* ── whole page is one flex column ── */
 body {
   display:flex;
   flex-direction:column;
@@ -27,9 +30,7 @@ body {
   background:#161b28;
   border-bottom:3px solid #f0a500;
   padding:10px 14px;
-  display:flex;
-  align-items:center;
-  gap:10px;
+  text-align:center;
 }
 #hdr h1 {
   font-size:clamp(1rem,5.5vw,1.45rem);
@@ -37,16 +38,8 @@ body {
   color:#f0a500;
   letter-spacing:.04em;
 }
-.dot {
-  width:10px; height:10px;
-  background:#e63946;
-  border-radius:50%;
-  flex-shrink:0;
-  animation:bl 1.4s infinite;
-}
-@keyframes bl { 0%,100%{opacity:1} 50%{opacity:.15} }
 
-/* PLAYER WRAP — takes ~42% of remaining space */
+/* PLAYER — 42% of remaining height */
 #pwrap {
   flex:0 0 42%;
   position:relative;
@@ -54,10 +47,12 @@ body {
   overflow:hidden;
 }
 #vid {
-  width:100%; height:100%;
+  width:100%;
+  height:100%;
   display:block;
   object-fit:contain;
   background:#000;
+  /* no controls */
 }
 
 /* SPINNER */
@@ -78,68 +73,37 @@ body {
 }
 @keyframes sp { to { transform:rotate(360deg); } }
 
-/* ERROR */
-#errbox {
-  position:absolute; inset:0;
-  background:rgba(0,0,0,.85);
-  display:none;
-  flex-direction:column;
-  align-items:center; justify-content:center;
-  gap:12px;
-  text-align:center;
-  padding:20px;
-  font-size:clamp(.9rem,4vw,1.05rem);
-  line-height:1.5;
-}
-#errbox.on { display:flex; }
-
-/* NOW PLAYING BAR */
-#now {
-  flex-shrink:0;
-  background:#161b28;
-  border-bottom:1px solid #252d45;
-  padding:6px 14px;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:10px;
-}
-#nowname {
-  font-size:clamp(1rem,5.5vw,1.4rem);
-  font-weight:bold;
+/* channel name overlay on player */
+#cname {
+  position:absolute;
+  bottom:0; left:0; right:0;
+  background:rgba(0,0,0,.45);
   color:#f0a500;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
+  font-size:clamp(1rem,5vw,1.4rem);
+  font-weight:bold;
+  text-align:center;
+  padding:8px 14px;
+  letter-spacing:.03em;
 }
-#mute {
-  flex-shrink:0;
-  width:46px; height:46px;
-  background:#1e2438;
-  border:2px solid #252d45;
-  border-radius:11px;
-  display:flex; align-items:center; justify-content:center;
-  cursor:pointer;
-  font-size:1.45rem;
-  user-select:none;
-}
-#mute:active { transform:scale(.92); }
 
-/* 3x3 GRID — fills all remaining height */
+/* subtitles off */
+video::cue { display:none; }
+
+/* 3x3 GRID */
 #grid {
   flex:1;
   display:grid;
-  grid-template-columns: repeat(3, 1fr);
-  grid-template-rows:    repeat(3, 1fr);
-  gap:6px;
-  padding:6px;
+  grid-template-columns:repeat(3,1fr);
+  grid-template-rows:repeat(3,1fr);
+  gap:8px;
+  padding:8px;
   min-height:0;
 }
 
 .cb {
   background:#1e2438;
-  border:2px solid #252d45;
-  border-radius:14px;
+  border:2px solid #2a3258;
+  border-radius:16px;
   display:flex;
   align-items:center;
   justify-content:center;
@@ -149,7 +113,6 @@ body {
   user-select:none;
   -webkit-user-select:none;
   transition:background .1s, transform .08s;
-  /* no min-height needed — flex handles it */
 }
 .cb span {
   font-size:clamp(.72rem,3.8vw,1.05rem);
@@ -166,10 +129,8 @@ body {
 .cb.active span { color:#0d1018; }
 .cb:active { transform:scale(.93); }
 
-/* ══════════════════════════════
-   LANDSCAPE → fullscreen video
-══════════════════════════════ */
-@media (orientation: landscape) {
+/* LANDSCAPE — CSS hides UI (fallback if webkit fullscreen not available) */
+@media (orientation:landscape) {
   #hdr, #now, #grid { display:none !important; }
   #pwrap {
     position:fixed !important;
@@ -184,128 +145,124 @@ body {
 </head>
 <body>
 
-<div id="hdr">
-  <div class="dot"></div>
-  <h1>HAUSEN AM STREAM</h1>
-</div>
+<div id="hdr"><h1>HAUSEN AM STREAM</h1></div>
 
 <div id="pwrap">
-  <video id="vid" playsinline autoplay muted controls></video>
+  <video id="vid" playsinline></video>
   <div id="spin" class="on"><div class="ring"></div></div>
-  <div id="errbox">
-    <div style="font-size:2.4rem">&#128225;</div>
-    <div>Sender konnte nicht geladen werden.<br>Bitte anderen Sender w&#228;hlen.</div>
-  </div>
-</div>
-
-<div id="now">
-  <div id="nowname">ARD</div>
-  <div id="mute">&#128266;</div>
+  <div id="cname">ARD</div>
 </div>
 
 <div id="grid"></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.7/hls.min.js"></script>
 <script>
-var CH = [
-  { n:"ARD",     u:"https://daserste-live.ard-mcdn.de/daserste/live/hls/de/master.m3u8" },
-  { n:"ZDF",     u:"https://zdf-hls-15.akamaized.net/hls/live/2016498/de/high/master.m3u8" },
-  { n:"SWR BW",  u:"https://swrbwd-hls.akamaized.net/hls/live/2018672/swrbwd/master.m3u8" },
-  { n:"PHOENIX", u:"https://zdf-hls-19.akamaized.net/hls/live/2016502/de/high/master.m3u8" },
-  { n:"NDR",     u:"https://mcdn.ndr.de/ndr/hls/ndr_fs/ndr_nds/master.m3u8" },
-  { n:"BR S\u00fcd",  u:"https://mcdn.br.de/br/fs/bfs_sued/hls/de/master.m3u8" },
-  { n:"WDR",     u:"https://wdrfs247.akamaized.net/hls/live/681509/wdr_msl4_fs247/index.m3u8" },
-  { n:"ARTE DE", u:"https://artesimulcast.akamaized.net/hls/live/2030993/artelive_de/index.m3u8" },
-  { n:"3sat",    u:"https://zdf-hls-18.akamaized.net/hls/live/2016501/dach/high/master.m3u8" }
+var video     = document.getElementById('vid');
+var spinEl    = document.getElementById('spin');
+var cnameEl   = document.getElementById('cname');
+var gridEl    = document.getElementById('grid');
+var hlsPlayer = null;
+var curIdx    = -1;
+
+var channels = [
+  { name:"ARD",     url:"https://daserste-live.ard-mcdn.de/daserste/live/hls/de/master.m3u8" },
+  { name:"ZDF",     url:"https://zdf-hls-15.akamaized.net/hls/live/2016498/de/high/master.m3u8" },
+  { name:"SWR BW",  url:"https://swrbwd-hls.akamaized.net/hls/live/2018672/swrbwd/master.m3u8" },
+  { name:"PHOENIX", url:"https://zdf-hls-19.akamaized.net/hls/live/2016502/de/high/master.m3u8" },
+  { name:"NDR",     url:"https://mcdn.ndr.de/ndr/hls/ndr_fs/ndr_nds/master.m3u8" },
+  { name:"BR S\u00fcd",  url:"https://mcdn.br.de/br/fs/bfs_sued/hls/de/master.m3u8" },
+  { name:"WDR",     url:"https://wdrfs247.akamaized.net/hls/live/681509/wdr_msl4_fs247/index.m3u8" },
+  { name:"ARTE DE", url:"https://artesimulcast.akamaized.net/hls/live/2030993/artelive_de/index.m3u8" },
+  { name:"3sat",    url:"https://zdf-hls-18.akamaized.net/hls/live/2016501/dach/high/master.m3u8" }
 ];
 
-var vid    = document.getElementById("vid");
-var spin   = document.getElementById("spin");
-var errbox = document.getElementById("errbox");
-var nowEl  = document.getElementById("nowname");
-var muteEl = document.getElementById("mute");
-var gridEl = document.getElementById("grid");
+/* ── Play a channel (logic from reference code) ── */
+function playChannel(url, name, idx) {
+  cnameEl.textContent = name;
+  spinEl.classList.add('on');
 
-var hlsObj = null;
-var curIdx = -1;
-var muted  = false;
+  if (curIdx >= 0) {
+    var old = document.getElementById('b' + curIdx);
+    if (old) old.classList.remove('active');
+  }
+  curIdx = idx;
+  var btn = document.getElementById('b' + idx);
+  if (btn) btn.classList.add('active');
 
-/* ── Build grid buttons ── */
-for (var i = 0; i < CH.length; i++) {
+  if (hlsPlayer) { hlsPlayer.destroy(); hlsPlayer = null; }
+
+  if (Hls.isSupported()) {
+    hlsPlayer = new Hls({ lowLatencyMode:true, maxBufferLength:30, backBufferLength:30 });
+    hlsPlayer.loadSource(url);
+    hlsPlayer.attachMedia(video);
+    hlsPlayer.on(Hls.Events.MANIFEST_PARSED, function() {
+      hlsPlayer.subtitleTrack = -1;
+      video.play().catch(function() {});
+    });
+    hlsPlayer.on(Hls.Events.ERROR, function(ev, d) {
+      if (d.fatal) spinEl.classList.remove('on');
+    });
+  } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+    // iOS Safari native HLS
+    video.src = url;
+    video.play().catch(function() {});
+  }
+}
+
+video.addEventListener('playing', function() { spinEl.classList.remove('on'); });
+video.addEventListener('waiting', function() { spinEl.classList.add('on'); });
+
+/* ── Build grid ── */
+for (var i = 0; i < channels.length; i++) {
   (function(idx) {
-    var btn = document.createElement("button");
-    btn.className = "cb";
-    btn.id = "b" + idx;
-    var sp = document.createElement("span");
-    sp.textContent = CH[idx].n;
+    var btn = document.createElement('button');
+    btn.className = 'cb';
+    btn.id = 'b' + idx;
+    var sp = document.createElement('span');
+    sp.textContent = channels[idx].name;
     btn.appendChild(sp);
 
     function press(e) {
       if (e.cancelable) e.preventDefault();
       if (idx === curIdx) {
-        vid.paused ? vid.play() : vid.pause();
+        video.paused ? video.play() : video.pause();
       } else {
-        load(idx);
+        playChannel(channels[idx].url, channels[idx].name, idx);
       }
     }
-    btn.addEventListener("touchstart", press, { passive: false });
-    btn.addEventListener("click", press);
+    btn.addEventListener('touchstart', press, { passive:false });
+    btn.addEventListener('click', press);
     gridEl.appendChild(btn);
   })(i);
 }
 
-/* ── Load a channel ── */
-function load(idx) {
-  if (curIdx >= 0) {
-    var old = document.getElementById("b" + curIdx);
-    if (old) old.classList.remove("active");
-  }
-  curIdx = idx;
-  var btn = document.getElementById("b" + idx);
-  if (btn) btn.classList.add("active");
-
-  nowEl.textContent = CH[idx].n;
-  errbox.classList.remove("on");
-  spin.classList.add("on");
-
-  if (hlsObj) { hlsObj.destroy(); hlsObj = null; }
-
-  if (window.Hls && Hls.isSupported()) {
-    hlsObj = new Hls({ enableWorker: false, lowLatencyMode: true });
-    hlsObj.loadSource(CH[idx].u);
-    hlsObj.attachMedia(vid);
-    hlsObj.on(Hls.Events.MANIFEST_PARSED, function() {
-      vid.muted = muted;
-      vid.play().catch(function() {});
-    });
-    hlsObj.on(Hls.Events.ERROR, function(ev, d) {
-      if (d.fatal) {
-        spin.classList.remove("on");
-        errbox.classList.add("on");
+/* ── Orientation: webkit fullscreen on landscape ── */
+window.addEventListener('orientationchange', function() {
+  setTimeout(function() {
+    var isLandscape = window.innerWidth > window.innerHeight;
+    if (isLandscape) {
+      // iOS: native video fullscreen hides browser chrome completely
+      if (video.webkitEnterFullscreen) {
+        video.webkitEnterFullscreen();
+      } else if (video.requestFullscreen) {
+        video.requestFullscreen();
       }
-    });
-  } else if (vid.canPlayType("application/vnd.apple.mpegurl")) {
-    vid.src = CH[idx].u;
-    vid.muted = muted;
-    vid.play().catch(function() {});
-  } else {
-    spin.classList.remove("on");
-    errbox.classList.add("on");
-  }
-}
-
-vid.addEventListener("playing", function() { spin.classList.remove("on"); });
-vid.addEventListener("waiting", function() { spin.classList.add("on"); });
-vid.addEventListener("error",   function() { spin.classList.remove("on"); errbox.classList.add("on"); });
-
-muteEl.addEventListener("click", function() {
-  muted = !muted;
-  vid.muted = muted;
-  muteEl.innerHTML = muted ? "&#128263;" : "&#128266;";
+    } else {
+      // back to portrait — exit fullscreen
+      if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+      } else if (document.exitFullscreen && document.fullscreenElement) {
+        document.exitFullscreen();
+      }
+    }
+  }, 200);
 });
 
-/* ── Autostart ARD ── */
-load(0);
+/* ── Autostart ARD on load ── */
+window.onload = function() {
+  setTimeout(function() {
+    playChannel(channels[0].url, channels[0].name, 0);
+  }, 400);
+};
 </script>
 </body>
 </html>
