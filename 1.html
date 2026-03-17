@@ -117,8 +117,8 @@ video::cue { display:none; }
   gap:3px;
 }
 .cb .ch-icon svg {
-  width:clamp(9px,2.8vw,14px);
-  height:clamp(9px,2.8vw,14px);
+  width:clamp(18px,5.6vw,28px);
+  height:clamp(18px,5.6vw,28px);
 }
 
 /* active tile */
@@ -209,7 +209,7 @@ function updateTileState() {
 }
 
 function loadStream(url) {
-  spinEl.classList.add('on');
+  if (started) spinEl.classList.add('on');
   if (hlsPlayer) { hlsPlayer.destroy(); hlsPlayer = null; }
 
   if (window.Hls && Hls.isSupported()) {
