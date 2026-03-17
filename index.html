@@ -73,18 +73,7 @@ body {
 }
 @keyframes sp { to { transform:rotate(360deg); } }
 
-/* channel name overlay on player */
-#cname {
-  position:absolute;
-  bottom:0; left:0; right:0;
-  background:rgba(0,0,0,.45);
-  color:#f0a500;
-  font-size:clamp(1rem,5vw,1.4rem);
-  font-weight:bold;
-  text-align:center;
-  padding:8px 14px;
-  letter-spacing:.03em;
-}
+
 
 /* subtitles off */
 video::cue { display:none; }
@@ -150,7 +139,7 @@ video::cue { display:none; }
 <div id="pwrap">
   <video id="vid" playsinline></video>
   <div id="spin" class="on"><div class="ring"></div></div>
-  <div id="cname">ARD</div>
+
 </div>
 
 <div id="grid"></div>
@@ -158,7 +147,6 @@ video::cue { display:none; }
 <script>
 var video     = document.getElementById('vid');
 var spinEl    = document.getElementById('spin');
-var cnameEl   = document.getElementById('cname');
 var gridEl    = document.getElementById('grid');
 var hlsPlayer = null;
 var curIdx    = -1;
@@ -177,7 +165,6 @@ var channels = [
 
 /* ── Play a channel (logic from reference code) ── */
 function playChannel(url, name, idx) {
-  cnameEl.textContent = name;
   spinEl.classList.add('on');
 
   if (curIdx >= 0) {
@@ -240,22 +227,48 @@ window.addEventListener('orientationchange', function() {
   setTimeout(function() {
     var isLandscape = window.innerWidth > window.innerHeight;
     if (isLandscape) {
-      // iOS: native video fullscreen hides browser chrome completely
       if (video.webkitEnterFullscreen) {
         video.webkitEnterFullscreen();
       } else if (video.requestFullscreen) {
         video.requestFullscreen();
       }
     } else {
-      // back to portrait — exit fullscreen
-      if (document.webkitExitFullscreen) {
-        document.webkitExitFullscreen();
-      } else if (document.exitFullscreen && document.fullscreenElement) {
-        document.exitFullscreen();
-      }
+      exitFS();
     }
   }, 200);
 });
+
+/* also catch the case where user exits fullscreen manually */
+document.addEventListener('webkitfullscreenchange', function() {
+  if (!document.webkitFullscreenElement && !video.webkitDisplayingFullscreen) {
+    restorePortrait();
+  }
+});
+document.addEventListener('fullscreenchange', function() {
+  if (!document.fullscreenElement) {
+    restorePortrait();
+  }
+});
+video.addEventListener('webkitendfullscreen', function() {
+  restorePortrait();
+});
+
+function exitFS() {
+  if (video.webkitExitFullscreen) {
+    video.webkitExitFullscreen();
+  } else if (document.webkitExitFullscreen) {
+    document.webkitExitFullscreen();
+  } else if (document.exitFullscreen && document.fullscreenElement) {
+    document.exitFullscreen();
+  }
+  restorePortrait();
+}
+
+function restorePortrait() {
+  document.getElementById('hdr').style.display = '';
+  document.getElementById('grid').style.display = '';
+  document.getElementById('pwrap').removeAttribute('style');
+}
 
 /* ── Autostart ARD on load ── */
 window.onload = function() {
