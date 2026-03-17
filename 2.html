@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>HAUSEN AM STREAM</title>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.13/dist/hls.min.js"></script>
+<style>
+* { box-sizing:border-box; margin:0; padding:0; }
+
+html, body {
+  width:100%; height:100%;
+  background:#0d1018;
+  color:#eee8d8;
+  font-family: Georgia, serif;
+  overflow:hidden;
+  -webkit-tap-highlight-color:transparent;
+}
+body { display:flex; flex-direction:column; }
+
+/* ── HEADER ── */
+#hdr {
+  flex-shrink:0;
+  background:#161b28;
+  border-bottom:3px solid #f0a500;
+  padding:10px 14px;
+  text-align:center;
+}
+#hdr h1 {
+  font-size:clamp(1rem,5.5vw,1.45rem);
+  font-weight:bold;
+  color:#f0a500;
+  letter-spacing:.04em;
+}
+
+/* ── PLAYER ── */
+#pwrap {
+  flex:0 0 42%;
+  position:relative;
+  background:#000;
+  overflow:hidden;
+}
+#vid {
+  width:100%; height:100%;
+  display:block;
+  object-fit:contain;
+  background:#000;
+}
+
+/* ── SPINNER ── */
+#spin {
+  position:absolute; inset:0;
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(0,0,0,.55);
+  pointer-events:none;
+  opacity:0; transition:opacity .2s;
+}
+#spin.on { opacity:1; }
+.ring {
+  width:52px; height:52px;
+  border:4px solid rgba(240,165,0,.2);
+  border-top-color:#f0a500;
+  border-radius:50%;
+  animation:sp .8s linear infinite;
+}
+@keyframes sp { to { transform:rotate(360deg); } }
+
+/* subtitles off */
+video::cue { display:none; }
+
+/* ── 3x3 GRID ── */
+#grid {
+  flex:1;
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  grid-template-rows:repeat(3,1fr);
+  gap:8px;
+  padding:8px;
+  min-height:0;
+}
+
+/* ── TILE ── */
+.cb {
+  background:#1e2438;
+  border:2px solid #2a3258;
+  border-radius:16px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:5px;
+  cursor:pointer;
+  padding:6px 4px;
+  touch-action:manipulation;
+  user-select:none;
+  -webkit-user-select:none;
+  transition:background .1s, transform .08s;
+}
+.cb .ch-name {
+  font-size:clamp(.68rem,3.6vw,1rem);
+  font-weight:bold;
+  color:#eee8d8;
+  text-align:center;
+  line-height:1.2;
+  pointer-events:none;
+  /* shift name slightly upward by reducing bottom gap via flex order */
+  margin-bottom:1px;
+}
+/* icon row */
+.cb .ch-icon {
+  pointer-events:none;
+  opacity:0.38;
+  display:flex;
+  align-items:center;
+  gap:3px;
+}
+.cb .ch-icon svg {
+  width:clamp(18px,5.6vw,28px);
+  height:clamp(18px,5.6vw,28px);
+}
+
+/* active tile */
+.cb.active {
+  background:#f0a500;
+  border-color:#f0a500;
+}
+.cb.active .ch-name { color:#0d1018; }
+.cb.active .ch-icon { opacity:0.55; }
+
+/* icon fill changes with active state */
+.cb:not(.active) .ch-icon svg { fill:#aab0cc; }
+.cb.active       .ch-icon svg { fill:#0d1018; }
+
+/* play vs pause icons: show correct one per state */
+.cb:not(.active) .icon-pause { display:none; }
+.cb.active       .icon-play  { display:none; }
+/* paused-while-active: show play again */
+.cb.active.paused .icon-play  { display:block; }
+.cb.active.paused .icon-pause { display:none; }
+
+.cb:active { transform:scale(.93); }
+
+/* ── LANDSCAPE: CSS fullscreen ── */
+@media (orientation:landscape) {
+  #hdr, #grid { display:none !important; }
+  body { background:#000; }
+  #pwrap {
+    position:fixed !important;
+    inset:0 !important;
+    flex:none !important;
+    width:100vw !important;
+    height:100vh !important;
+    z-index:999;
+  }
+  #vid { object-fit:contain; }
+}
+</style>
+</head>
+<body>
+
+<div id="hdr"><h1>HAUSEN STREAM</h1></div>
+
+<div id="pwrap">
+  <video id="vid" playsinline muted></video>
+  <div id="spin"><div class="ring"></div></div>
+</div>
+
+<div id="grid"></div>
+
+<script>
+var video     = document.getElementById('vid');
+var spinEl    = document.getElementById('spin');
+var gridEl    = document.getElementById('grid');
+var hlsPlayer = null;
+var curIdx    = -1;
+var started   = false;
+
+var channels = [
+  { name:"ARD",     url:"https://daserste-live.ard-mcdn.de/daserste/live/hls/de/master.m3u8" },
+  { name:"ZDF",     url:"https://zdf-hls-15.akamaized.net/hls/live/2016498/de/high/master.m3u8" },
+  { name:"SWR",     url:"https://swrbwd-hls.akamaized.net/hls/live/2018672/swrbwd/master.m3u8" },
+  { name:"PHOENIX", url:"https://zdf-hls-19.akamaized.net/hls/live/2016502/de/high/master.m3u8" },
+  { name:"NDR",     url:"https://mcdn.ndr.de/ndr/hls/ndr_fs/ndr_nds/master.m3u8" },
+  { name:"BR",      url:"https://mcdn.br.de/br/fs/bfs_sued/hls/de/master.m3u8" },
+  { name:"WDR",     url:"https://wdrfs247.akamaized.net/hls/live/681509/wdr_msl4_fs247/index.m3u8" },
+  { name:"ARTE",    url:"https://artesimulcast.akamaized.net/hls/live/2030993/artelive_de/index.m3u8" },
+  { name:"3sat",    url:"https://zdf-hls-18.akamaized.net/hls/live/2016501/dach/high/master.m3u8" }
+];
+
+/* SVGs */
+var PLAY_SVG  = '<svg class="icon-play"  viewBox="0 0 10 10"><polygon points="2,1 2,9 9,5"/></svg>';
+var PAUSE_SVG = '<svg class="icon-pause" viewBox="0 0 10 10"><rect x="1.5" y="1" width="2.8" height="8" rx="0.8"/><rect x="5.7" y="1" width="2.8" height="8" rx="0.8"/></svg>';
+
+function updateTileState() {
+  for (var i = 0; i < channels.length; i++) {
+    var btn = document.getElementById('b' + i);
+    if (!btn) continue;
+    if (i === curIdx) {
+      btn.classList.add('active');
+      if (video.paused) btn.classList.add('paused');
+      else              btn.classList.remove('paused');
+    } else {
+      btn.classList.remove('active');
+      btn.classList.remove('paused');
+    }
+  }
+}
+
+function loadStream(url) {
+  if (started) spinEl.classList.add('on');
+  if (hlsPlayer) { hlsPlayer.destroy(); hlsPlayer = null; }
+
+  if (window.Hls && Hls.isSupported()) {
+    hlsPlayer = new Hls({ lowLatencyMode:true, maxBufferLength:30, backBufferLength:30 });
+    hlsPlayer.loadSource(url);
+    hlsPlayer.attachMedia(video);
+    hlsPlayer.on(Hls.Events.MANIFEST_PARSED, function() {
+      hlsPlayer.subtitleTrack = -1;
+      if (started) {
+        video.muted = false;
+        video.play().catch(function(){});
+      }
+    });
+    hlsPlayer.on(Hls.Events.ERROR, function(ev, d) {
+      if (d.fatal) spinEl.classList.remove('on');
+    });
+  } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+    video.src = url;
+    if (started) {
+      video.muted = false;
+      video.play().catch(function(){});
+    }
+  }
+}
+
+function setActive(idx) {
+  curIdx = idx;
+  updateTileState();
+}
+
+/* ── Build grid ── */
+for (var i = 0; i < channels.length; i++) {
+  (function(idx) {
+    var btn = document.createElement('button');
+    btn.className = 'cb';
+    btn.id = 'b' + idx;
+
+    /* name */
+    var nm = document.createElement('div');
+    nm.className = 'ch-name';
+    nm.textContent = channels[idx].name;
+
+    /* icon row: play + pause both present, CSS toggles visibility */
+    var ic = document.createElement('div');
+    ic.className = 'ch-icon';
+    ic.innerHTML = PLAY_SVG + PAUSE_SVG;
+
+    btn.appendChild(nm);
+    btn.appendChild(ic);
+
+    function press(e) {
+      if (e.cancelable) e.preventDefault();
+      if (!started) {
+        started = true;
+        video.muted = false;
+        setActive(idx);
+        loadStream(channels[idx].url);
+        video.play().catch(function(){});
+        return;
+      }
+      if (idx === curIdx) {
+        if (video.paused) { video.play(); }
+        else              { video.pause(); }
+        updateTileState();
+      } else {
+        setActive(idx);
+        loadStream(channels[idx].url);
+      }
+    }
+
+    btn.addEventListener('touchstart', press, { passive:false });
+    btn.addEventListener('click', press);
+    gridEl.appendChild(btn);
+  })(i);
+}
+
+video.addEventListener('playing', function() {
+  spinEl.classList.remove('on');
+  updateTileState();
+});
+video.addEventListener('waiting', function() { spinEl.classList.add('on'); });
+video.addEventListener('pause',   function() { updateTileState(); });
+
+/* pre-buffer ARD on load, wait for first tap */
+window.onload = function() {
+  setTimeout(function() {
+    setActive(0);
+    loadStream(channels[0].url);
+  }, 300);
+};
+
+/* ── Self-check on app resume ──────────────────────────────
+   When iOS brings the WebApp back from background the HLS
+   session may be dead (network timeout, buffer stall, etc.)
+   We detect this via visibilitychange and reload if needed. */
+document.addEventListener('visibilitychange', function() {
+  if (document.visibilityState !== 'visible') return;
+  if (curIdx < 0) return;
+
+  /* give the browser 800ms to recover on its own first */
+  setTimeout(function() {
+    var bad = false;
+
+    /* 1. video element reports an error */
+    if (video.error) bad = true;
+
+    /* 2. stream stalled: buffered nothing near currentTime */
+    if (!bad && video.buffered.length === 0) bad = true;
+
+    /* 3. HLS internal error state */
+    if (!bad && hlsPlayer && hlsPlayer.levels && hlsPlayer.levels.length === 0) bad = true;
+
+    /* 4. video has been paused AND we expect it to be playing */
+    if (!bad && started && video.paused && video.readyState < 2) bad = true;
+
+    if (bad) {
+      /* silent reload of current channel */
+      var url = channels[curIdx].url;
+      if (hlsPlayer) { hlsPlayer.destroy(); hlsPlayer = null; }
+
+      if (window.Hls && Hls.isSupported()) {
+        hlsPlayer = new Hls({ lowLatencyMode:true, maxBufferLength:30, backBufferLength:30 });
+        hlsPlayer.loadSource(url);
+        hlsPlayer.attachMedia(video);
+        hlsPlayer.on(Hls.Events.MANIFEST_PARSED, function() {
+          hlsPlayer.subtitleTrack = -1;
+          if (started) {
+            video.muted = false;
+            video.play().catch(function(){});
+          }
+        });
+        hlsPlayer.on(Hls.Events.ERROR, function(ev, d) {
+          if (d.fatal) spinEl.classList.remove('on');
+        });
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = url;
+        if (started) {
+          video.muted = false;
+          video.play().catch(function(){});
+        }
+      }
+    } else if (started && video.paused) {
+      /* stream is fine but iOS paused it — just resume */
+      video.play().catch(function(){});
+    }
+  }, 800);
+});
+</script>
+</body>
+</html>
