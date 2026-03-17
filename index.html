@@ -317,8 +317,14 @@ window.onload = function() {
    session may be dead (network timeout, buffer stall, etc.)
    We detect this via visibilitychange and reload if needed. */
 document.addEventListener('visibilitychange', function() {
-  /* App geht in Hintergrund → Lock-Screen-Controls sofort entfernen */
+  /* App geht in Hintergrund → src hart entfernen, nur so verschwindet
+     der Lock-Screen-Button auf iOS zuverlässig.
+     Der visible-Handler unten lädt den Stream beim Zurückkommen neu. */
   if (document.visibilityState === 'hidden') {
+    if (hlsPlayer) { hlsPlayer.destroy(); hlsPlayer = null; }
+    video.pause();
+    video.src = '';
+    video.load();
     if ('mediaSession' in navigator) {
       navigator.mediaSession.playbackState = 'none';
     }
@@ -342,6 +348,9 @@ document.addEventListener('visibilitychange', function() {
 
     /* 4. video has been paused AND we expect it to be playing */
     if (!bad && started && video.paused && video.readyState < 2) bad = true;
+
+    /* src wurde beim Minimieren geleert → immer neu laden */
+    if (!video.src || video.src === window.location.href) bad = true;
 
     if (bad) {
       /* silent reload of current channel */
