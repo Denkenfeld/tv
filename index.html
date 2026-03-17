@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>HAUSEN AM STREAM</title>
+<title>HAUSEN STREAM</title>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.13/dist/hls.min.js"></script>
 <style>
 * { box-sizing:border-box; margin:0; padding:0; }
@@ -137,7 +137,7 @@ video::cue { display:none; }
 <div id="hdr"><h1>HAUSEN AM STREAM</h1></div>
 
 <div id="pwrap">
-  <video id="vid" playsinline></video>
+  <video id="vid" playsinline muted></video>
   <div id="spin" class="on"><div class="ring"></div></div>
 
 </div>
@@ -251,6 +251,8 @@ document.addEventListener('fullscreenchange', function() {
 });
 video.addEventListener('webkitendfullscreen', function() {
   restorePortrait();
+  /* iOS pauses after exiting fullscreen – resume automatically */
+  setTimeout(function() { video.play().catch(function(){}); }, 150);
 });
 
 function exitFS() {
@@ -276,6 +278,15 @@ window.onload = function() {
     playChannel(channels[0].url, channels[0].name, 0);
   }, 400);
 };
+
+/* ── Unmute on first tap (iOS autoplay requires muted start) ── */
+var unmuted = false;
+document.addEventListener('touchstart', function() {
+  if (!unmuted) {
+    unmuted = true;
+    video.muted = false;
+  }
+}, { once: true });
 </script>
 </body>
 </html>
