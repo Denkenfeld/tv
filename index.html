@@ -1,40 +1,354 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>HAUSEN AM STREAM</title>
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.13/dist/hls.min.js"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@600;700&display=swap');
-        
-        * { box-sizing: border-box; margin:0; padding:0; }
-        
-        body {
-            font-family: 'Inter', Arial, sans-serif;
-            background: linear-gradient(180deg, #f0f4fa, #e6edf7);
-            color: #1e3a8a;
-            overflow: hidden;
-            height: 100vh;
-            -webkit-tap-highlight-color: transparent;
-        }
-        
-        .top-bar {
-            background: rgba(30, 58, 138, 0.85);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            color: white;
-            text-align: center;
-            padding: 12px 10px;
-            font-size: 1.28rem;
-            font-weight: 700;
-            position: sticky;
-            top: 0;
-            z-index: 20;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-            letter-spacing: -0.3px;
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>HAUSEN AM STREAM</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@900&family=Source+Serif+4:wght@600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:     #0d1018;
+      --bg2:    #161b28;
+      --bg3:    #1e2438;
+      --accent: #f0a500;
+      --acc2:   #b87b00;
+      --text:   #eee8d8;
+      --muted:  #7a7e96;
+      --red:    #e63946;
+      --border: #252d45;
+    }
+
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+    html { height: 100%; }
+
+    body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Source Serif 4', Georgia, serif;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Header ── */
+    #header {
+      background: var(--bg2);
+      border-bottom: 3px solid var(--accent);
+      padding: 10px 14px 9px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      flex-shrink: 0;
+      z-index: 10;
+    }
+
+    .live-dot {
+      width: 10px; height: 10px;
+      background: var(--red);
+      border-radius: 50%;
+      flex-shrink: 0;
+      animation: blink 1.4s infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.15} }
+
+    #header h1 {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: clamp(1.05rem, 5vw, 1.5rem);
+      font-weight: 900;
+      color: var(--accent);
+      letter-spacing: .03em;
+      line-height: 1;
+    }
+
+    /* ── Player ── */
+    #playerWrap {
+      background: #000;
+      position: relative;
+      width: 100%;
+      flex-shrink: 0;
+    }
+
+    #player {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: contain;
+      background: #000;
+    }
+
+    #spinnerEl {
+      position: absolute; inset:0;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,.6);
+      pointer-events: none;
+      opacity: 0; transition: opacity .2s;
+    }
+    #spinnerEl.vis { opacity: 1; }
+    .spinner {
+      width: 50px; height: 50px;
+      border: 4px solid rgba(240,165,0,.2);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to{ transform:rotate(360deg) } }
+
+    #errorEl {
+      position: absolute; inset:0;
+      display: none; align-items: center; justify-content: center;
+      flex-direction: column; gap: 10px;
+      background: rgba(0,0,0,.82);
+      font-size: clamp(.9rem,4vw,1.05rem);
+      text-align: center; padding: 20px; line-height: 1.5;
+    }
+    #errorEl.vis { display: flex; }
+    #errorEl .ei { font-size: 2.4rem; }
+
+    /* ── Now playing ── */
+    #nowPlaying {
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      padding: 7px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    #nowName {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: clamp(1.1rem, 5.5vw, 1.5rem);
+      font-weight: 900;
+      color: var(--accent);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #muteBtn {
+      width: 46px; height: 46px;
+      background: var(--bg3);
+      border: 2px solid var(--border);
+      border-radius: 11px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; flex-shrink: 0;
+      font-size: 1.5rem; user-select: none;
+    }
+    #muteBtn:active { transform: scale(.93); }
+
+    /* ── 3×3 Grid ── */
+    #grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      gap: 6px;
+      padding: 6px;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .ch-btn {
+      background: var(--bg3);
+      border: 2px solid var(--border);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      padding: 4px 6px;
+      transition: background .1s, border-color .1s, transform .08s;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+
+    .ch-btn span {
+      font-family: 'Source Serif 4', Georgia, serif;
+      font-size: clamp(.72rem, 3.5vw, 1rem);
+      font-weight: 600;
+      color: var(--text);
+      text-align: center;
+      line-height: 1.2;
+      pointer-events: none;
+    }
+
+    .ch-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+    .ch-btn.active span { color: #0d1018; }
+    .ch-btn:active { transform: scale(.94); }
+
+    /* ── Landscape: fullscreen video ── */
+    @media (orientation: landscape) {
+      #header, #nowPlaying, #grid { display: none !important; }
+      body { overflow: hidden; }
+      #playerWrap {
+        position: fixed !important;
+        inset: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        z-index: 999;
+      }
+      #player { object-fit: contain; }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="header">
+    <div class="live-dot"></div>
+    <h1>HAUSEN AM STREAM</h1>
+  </div>
+
+  <div id="playerWrap">
+    <video id="player" playsinline autoplay muted controls></video>
+    <div id="spinnerEl" class="vis"><div class="spinner"></div></div>
+    <div id="errorEl">
+      <span class="ei">📡</span>
+      <div>Sender konnte nicht geladen werden.<br>Bitte anderen Sender wählen.</div>
+    </div>
+  </div>
+
+  <div id="nowPlaying">
+    <div id="nowName">Wird geladen …</div>
+    <div id="muteBtn">🔊</div>
+  </div>
+
+  <div id="grid"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.7/hls.min.js"></script>
+  <script>
+    const CHANNELS = [
+      // ARD – HTTPS ✓
+      { name:"ARD",
+        url:"https://daserste-live.ard-mcdn.de/daserste/live/hls/de/master.m3u8" },
+      // ZDF – http → https
+      { name:"ZDF",
+        url:"https://zdf-hls-15.akamaized.net/hls/live/2016498/de/high/master.m3u8" },
+      // SWR BW – HTTPS ✓
+      { name:"SWR BW",
+        url:"https://swrbwd-hls.akamaized.net/hls/live/2018672/swrbwd/master.m3u8" },
+      // PHOENIX – http → https
+      { name:"PHOENIX",
+        url:"https://zdf-hls-19.akamaized.net/hls/live/2016502/de/high/master.m3u8" },
+      // NDR – HTTPS ✓
+      { name:"NDR Nieders.",
+        url:"https://mcdn.ndr.de/ndr/hls/ndr_fs/ndr_nds/master.m3u8" },
+      // BR Süd – HTTPS ✓
+      { name:"BR Süd",
+        url:"https://mcdn.br.de/br/fs/bfs_sued/hls/de/master.m3u8" },
+      // WDR – alternative CDN URL (geo-open)
+      { name:"WDR",
+        url:"https://wdrfs247.akamaized.net/hls/live/681509/wdr_msl4_fs247/index.m3u8" },
+      // ARTE DE – HTTPS ✓
+      { name:"ARTE DE",
+        url:"https://artesimulcast.akamaized.net/hls/live/2030993/artelive_de/index.m3u8" },
+      // 3sat – http → https
+      { name:"3sat",
+        url:"https://zdf-hls-18.akamaized.net/hls/live/2016501/dach/high/master.m3u8" },
+    ];
+
+    const video      = document.getElementById('player');
+    const spinnerEl  = document.getElementById('spinnerEl');
+    const errorEl    = document.getElementById('errorEl');
+    const nowName    = document.getElementById('nowName');
+    const muteBtn    = document.getElementById('muteBtn');
+    const gridEl     = document.getElementById('grid');
+    const playerWrap = document.getElementById('playerWrap');
+
+    let hls      = null;
+    let activeIdx= -1;
+    let muted    = false;
+
+    // ── Portrait: size player so grid always fits ──────────
+    function sizePlayer() {
+      if (window.matchMedia('(orientation: landscape)').matches) return;
+      const vh      = window.innerHeight;
+      const headerH = document.getElementById('header').offsetHeight;
+      const nowH    = document.getElementById('nowPlaying').offsetHeight;
+      const gridH   = Math.floor((vh - headerH - nowH) * 0.52);
+      playerWrap.style.height = (vh - headerH - nowH - gridH) + 'px';
+    }
+
+    window.addEventListener('resize', sizePlayer);
+
+    // ── Build 3×3 buttons ──────────────────────────────────
+    CHANNELS.forEach((ch, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'ch-btn';
+      btn.id = 'btn-' + i;
+      btn.setAttribute('aria-label', ch.name + ' abspielen');
+      btn.innerHTML = `<span>${ch.name}</span>`;
+
+      // touchstart → instant, no 300ms delay on iOS
+      btn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        i === activeIdx
+          ? (video.paused ? video.play() : video.pause())
+          : loadChannel(i);
+      }, { passive: false });
+
+      // mouse fallback
+      btn.addEventListener('click', () => {
+        i === activeIdx
+          ? (video.paused ? video.play() : video.pause())
+          : loadChannel(i);
+      });
+
+      gridEl.appendChild(btn);
+    });
+
+    // ── Load channel ───────────────────────────────────────
+    function loadChannel(idx) {
+      const ch = CHANNELS[idx];
+
+      if (activeIdx >= 0) document.getElementById('btn-' + activeIdx)?.classList.remove('active');
+      activeIdx = idx;
+      document.getElementById('btn-' + idx)?.classList.add('active');
+
+      nowName.textContent = ch.name;
+      errorEl.classList.remove('vis');
+      spinnerEl.classList.add('vis');
+
+      if (hls) { hls.destroy(); hls = null; }
+
+      if (Hls.isSupported()) {
+        hls = new Hls({ enableWorker: false, lowLatencyMode: true });
+        hls.loadSource(ch.url);
+        hls.attachMedia(video);
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          video.muted = muted;
+          video.play().catch(() => {});
+        });
+        hls.on(Hls.Events.ERROR, (_, d) => {
+          if (d.fatal) { spinnerEl.classList.remove('vis'); errorEl.classList.add('vis'); }
+        });
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        // iOS Safari native HLS
+        video.src = ch.url;
+        video.muted = muted;
+        video.play().catch(() => {});
+      } else {
+        spinnerEl.classList.remove('vis');
+        errorEl.classList.add('vis');
+      }
+    }
+
+    video.addEventListener('playing', () => spinnerEl.classList.remove('vis'));
+    video.addEventListener('waiting', () => spinnerEl.classList.add('vis'));
+    video.addEventListener('error',   () => { spinnerEl.classList.remove('vis'); errorEl.classList.add('vis'); });
+
+    muteBtn.addEventListener('click', () => {
+      muted = !muted;
+      video.muted = muted;
+      muteBtn.textContent = muted ? '🔇' : '🔊';
+    });
+
+    // Auto-start
+    setTimeout(() => { sizePlayer(); loadChannel(0); }, 250);
+  </script>
+</body>
+</html>            letter-spacing: -0.3px;
         }
         
         .main {
