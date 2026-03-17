@@ -236,6 +236,17 @@ function loadStream(url) {
   }
 }
 
+/* ── Vollständig stoppen + Lock-Screen-Controls entfernen ── */
+function stopStream() {
+  if (hlsPlayer) { hlsPlayer.destroy(); hlsPlayer = null; }
+  video.pause();
+  video.src = '';
+  video.load();
+  if ('mediaSession' in navigator) {
+    navigator.mediaSession.playbackState = 'none';
+  }
+}
+
 function setActive(idx) {
   curIdx = idx;
   updateTileState();
@@ -272,8 +283,13 @@ for (var i = 0; i < channels.length; i++) {
         return;
       }
       if (idx === curIdx) {
-        if (video.paused) { video.play(); }
-        else              { video.pause(); }
+        if (video.paused) {
+          /* Stream neu laden statt nur play(), da src nach Stop leer ist */
+          loadStream(channels[idx].url);
+        } else {
+          /* Hart stoppen – entfernt den Play-Button vom Sperrbildschirm */
+          stopStream();
+        }
         updateTileState();
       } else {
         setActive(idx);
@@ -290,6 +306,9 @@ for (var i = 0; i < channels.length; i++) {
 video.addEventListener('playing', function() {
   spinEl.classList.remove('on');
   updateTileState();
+  if ('mediaSession' in navigator) {
+    navigator.mediaSession.playbackState = 'playing';
+  }
 });
 video.addEventListener('waiting', function() { spinEl.classList.add('on'); });
 video.addEventListener('pause',   function() { updateTileState(); });
