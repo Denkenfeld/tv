@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>HAUSEN AM STREAM</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.13/dist/hls.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Arial:wght@700&display=swap');
+        
+        * { box-sizing: border-box; }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            background: #f8f8f8;
+            color: #222;
+            line-height: 1.4;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        .top-bar {
+            background: #003087;
+            color: white;
+            text-align: center;
+            padding: 12px 10px;
+            font-size: 1.4rem;
+            font-weight: bold;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        
+        .main {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        
+        .player-area {
+            flex: 1;
+            background: #000;
+            position: relative;
+            min-height: 45vh;
+        }
+        
+        #video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        
+        .channel-name {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0,48,135,0.95);
+            color: white;
+            padding: 14px 20px;
+            font-size: 1.55rem;
+            font-weight: bold;
+            text-align: center;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.6);
+        }
+        
+        .channel-list {
+            background: white;
+            padding: 20px 15px 30px;
+            flex: 1;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .channel-list h2 {
+            font-size: 1.5rem;
+            color: #003087;
+            text-align: center;
+            margin: 0 0 18px 0;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #0077cc;
+        }
+        
+        .buttons-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+        
+        .channel-btn {
+            aspect-ratio: 1 / 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.45rem;
+            font-weight: bold;
+            color: white;
+            background: linear-gradient(135deg, #0077cc, #0055aa);
+            border: none;
+            border-radius: 22px;
+            box-shadow: 0 6px 18px rgba(0, 119, 204, 0.35);
+            cursor: pointer;
+            padding: 15px;
+            line-height: 1.15;
+            text-align: center;
+            transition: transform 0.1s ease;
+            -webkit-user-select: none;
+        }
+        
+        .channel-btn:active {
+            transform: scale(0.92);
+            background: linear-gradient(135deg, #0099ff, #0077cc);
+        }
+        
+        .info-text {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 1.15rem;
+            color: #555;
+            padding: 12px;
+            background: #f0f0f0;
+            border-radius: 12px;
+        }
+        
+        /* DESKTOP / iPad (größer als iPhone) */
+        @media (min-width: 768px) {
+            .buttons-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            .channel-btn {
+                font-size: 1.6rem;
+            }
+        }
+        
+        @media (min-width: 1024px) {
+            .main {
+                flex-direction: row;
+            }
+            .player-area {
+                flex: 2;
+                min-height: auto;
+            }
+            .channel-list {
+                flex: 1;
+                max-width: 380px;
+                overflow-y: auto;
+            }
+            .buttons-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="top-bar">HAUSEN AM STREAM</div>
+    
+    <div class="main">
+        <!-- PLAYER -->
+        <div class="player-area">
+            <video id="video" controls autoplay playsinline></video>
+            <div id="current-channel" class="channel-name">Kanal auswählen →</div>
+        </div>
+        
+        <!-- KANÄLE – SUPER GROSSE KNÖPFE -->
+        <div class="channel-list">
+            <h2>📺 Sender auswählen</h2>
+            <div class="buttons-grid" id="buttons-grid"></div>
+            
+            <div class="info-text">
+                Einfach auf den großen Knopf tippen.<br>
+                Der Sender startet sofort.<br>
+                Kein Technik-Kram – nur tippen!
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        let hls = null;
+        
+        function playChannel(url, name) {
+            document.getElementById('current-channel').textContent = name;
+            
+            if (hls) {
+                hls.destroy();
+                hls = null;
+            }
+            
+            if (Hls.isSupported()) {
+                hls = new Hls({ lowLatencyMode: true });
+                hls.loadSource(url);
+                hls.attachMedia(video);
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = url;
+            }
+            
+            video.play().catch(() => {});
+        }
+        
+        const channels = [
+            {name: "ARD", url: "https://daserste-live.ard-mcdn.de/daserste/live/hls/de/master.m3u8"},
+            {name: "ARD ONE", url: "https://mcdn-one.ard.de/ardone/hls/master.m3u8"},
+            {name: "ARD Alpha", url: "https://mcdn.br.de/br/fs/ard_alpha/hls/de/master.m3u8"},
+            {name: "ARD Tagesschau", url: "https://tagesschau.akamaized.net/hls/live/2020115/tagesschau/tagesschau_1/master.m3u8"},
+            {name: "ZDF", url: "http://zdf-hls-15.akamaized.net/hls/live/2016498/de/high/master.m3u8"},
+            {name: "ZDF neo", url: "http://zdf-hls-16.akamaized.net/hls/live/2016499/de/high/master.m3u8"},
+            {name: "ZDF info", url: "http://zdf-hls-17.akamaized.net/hls/live/2016500/de/high/master.m3u8"},
+            {name: "MDR Sachsen", url: "https://mdrtvsnhls.akamaized.net/hls/live/2016928/mdrtvsn/master.m3u8"},
+            {name: "MDR Thüringen", url: "https://mdrtvthhls.akamaized.net/hls/live/2016880/mdrtvth/master.m3u8"},
+            {name: "MDR Sachsen-Anhalt", url: "https://mdrtvsahls.akamaized.net/hls/live/2016879/mdrtvsa/master.m3u8"},
+            {name: "PHOENIX", url: "http://zdf-hls-19.akamaized.net/hls/live/2016502/de/high/master.m3u8"},
+            {name: "RBB Berlin", url: "https://rbb-hls-berlin.akamaized.net/hls/live/2017824/rbb_berlin/master.m3u8"},
+            {name: "RBB Brandenburg", url: "https://rbb-hls-brandenburg.akamaized.net/hls/live/2017825/rbb_brandenburg/master.m3u8"},
+            {name: "BR Nord", url: "https://mcdn.br.de/br/fs/bfs_nord/hls/de/master.m3u8"},
+            {name: "BR Süd", url: "https://mcdn.br.de/br/fs/bfs_sued/hls/de/master.m3u8"},
+            {name: "HR", url: "https://hrhls.akamaized.net/hls/live/2024525/hrhls/master.m3u8"},
+            {name: "SR", url: "https://srfs.akamaized.net/hls/live/689649/srfsgeo/index.m3u8"},
+            {name: "SWR BW", url: "https://swrbwd-hls.akamaized.net/hls/live/2018672/swrbwd/master.m3u8"},
+            {name: "SWR RP", url: "https://swrrpd-hls.akamaized.net/hls/live/2018676/swrrpd/master.m3u8"},
+            {name: "NDR Niedersachsen", url: "https://mcdn.ndr.de/ndr/hls/ndr_fs/ndr_nds/master.m3u8"},
+            {name: "NDR Hamburg", url: "https://mcdn.ndr.de/ndr/hls/ndr_fs/ndr_hh/master.m3u8"},
+            {name: "NDR Mecklenburg-Vorpommern", url: "https://mcdn.ndr.de/ndr/hls/ndr_fs/ndr_mv/master.m3u8"},
+            {name: "NDR Schleswig-Holstein", url: "https://mcdn.ndr.de/ndr/hls/ndr_fs/ndr_sh/master.m3u8"},
+            {name: "DW", url: "https://dwamdstream111.akamaized.net/hls/live/2017972/dwstream111/index.m3u8"},
+            {name: "WDR (weltweit)", url: "https://mcdn.wdr.de/wdr/wdrfs/de/master.m3u8"},
+            {name: "WDR Lokalzeit Münsterland", url: "https://wdrlokalzeit.akamaized.net/hls/live/2018025/wdrlz_muensterland/index.m3u8"},
+            {name: "WDR Lokalzeit Südwestfalen", url: "https://wdrlokalzeit.akamaized.net/hls/live/2018020/wdrlz_siegen/index.m3u8"},
+            {name: "WDR Lokalzeit Ostwestfalen Lippe", url: "https://wdrlokalzeit.akamaized.net/hls/live/2018026/wdrlz_bielefeld/index.m3u8"},
+            {name: "WDR Lokalzeit Bonn", url: "https://wdrlokalzeit.akamaized.net/hls/live/2018021/wdrlz_bonn/index.m3u8"},
+            {name: "WDR Lokalzeit Dortmund", url: "https://wdrlokalzeit.akamaized.net/hls/live/2018022/wdrlz_dortmund/index.m3u8"},
+            {name: "WDR Lokalzeit Aachen", url: "https://wdrlokalzeit.akamaized.net/hls/live/2018019/wdrlz_aachen/index.m3u8"},
+            {name: "WDR Lokalzeit Düsseldorf", url: "https://wdrlokalzeit.akamaized.net/hls/live/2018023/wdrlz_duesseldorf/index.m3u8"},
+            {name: "WDR Lokalzeit Köln", url: "https://wdrlokalzeit.akamaized.net/hls/live/2023550/wdrlz_koeln/index.m3u8"},
+            {name: "WDR (Deutschland)", url: "https://wdrfs247.akamaized.net/hls/live/681509/wdr_msl4_fs247/index.m3u8"},
+            {name: "WDR Lokalzeit Bergisches Land", url: "https://wdrlokalzeit.akamaized.net/hls/live/2018028/wdrlz_wuppertal/index.m3u8"},
+            {name: "WDR Lokalzeit Ruhr", url: "https://wdrlokalzeit.akamaized.net/hls/live/2018027/wdrlz_essen/index.m3u8"},
+            {name: "WDR Lokalzeit Duisburg", url: "https://wdrlokalzeit.akamaized.net/hls/live/2018024/wdrlz_duisburg/index.m3u8"},
+            {name: "ARTE DE", url: "https://artesimulcast.akamaized.net/hls/live/2030993/artelive_de/index.m3u8"},
+            {name: "ARTE FR", url: "https://artesimulcast.akamaized.net/hls/live/2031003/artelive_fr/index.m3u8"},
+            {name: "3Sat", url: "https://zdf-hls-18.akamaized.net/hls/live/2016501/dach/high/master.m3u8"},
+            {name: "kika", url: "https://kikageohls.akamaized.net/hls/live/2022693/livetvkika_de/master.m3u8"}
+        ];
+        
+        function createButtons() {
+            const grid = document.getElementById('buttons-grid');
+            grid.innerHTML = '';
+            
+            channels.forEach(ch => {
+                const btn = document.createElement('button');
+                btn.className = 'channel-btn';
+                btn.textContent = ch.name;
+                btn.addEventListener('click', () => playChannel(ch.url, ch.name));
+                grid.appendChild(btn);
+            });
+        }
+        
+        // Start
+        window.onload = () => {
+            createButtons();
+            
+            // Erster Kanal automatisch (ARD) – funktioniert auch auf iPhone
+            setTimeout(() => {
+                playChannel(channels[0].url, channels[0].name);
+            }, 600);
+        };
+    </script>
+</body>
+</html>
